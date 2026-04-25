@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>포트폴리오 트래커</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1e2530;
+    --accent: #00e5b4;
+    --accent2: #ff4e6a;
+    --accent3: #ffd93d;
+    --accent4: #6c63ff;
+    --text: #e8eaf0;
+    --text-muted: #5a6278;
+    --text-dim: #8892a4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* LAYOUT */
+  .app { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    padding: 0 24px 24px;
+    border-bottom: 1px solid var(--border);
+    line-height: 1;
+  }
+  .logo span { color: var(--text-muted); font-size: 11px; display: block; letter-spacing: 2px; margin-top: 4px; }
+
+  .nav { padding: 16px 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 24px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .15s;
+    border-left: 3px solid transparent;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,229,180,.06); }
+  .nav-item .icon { font-size: 16px; }
+
+  .main { flex: 1; overflow: auto; padding: 32px; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* HEADER */
+  .page-header { margin-bottom: 28px; }
+  .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 2px; color: var(--text); line-height: 1; }
+  .page-sub { color: var(--text-muted); font-size: 12px; margin-top: 6px; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+  /* STAT CARDS */
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .stat-label { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; }
+  .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .pos { color: var(--accent); }
+  .neg { color: var(--accent2); }
+
+  /* FORM */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; align-items: end; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+
+  input, select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    outline: none;
+    transition: border-color .15s;
+    width: 100%;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #00ffcc; }
+  .btn-danger { background: var(--accent2); color: #fff; }
+  .btn-danger:hover { opacity: .85; }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 12px 12px;
+    border-bottom: 1px solid rgba(30,37,48,.6);
+    font-size: 13px;
+  }
+  tr:hover td { background: var(--surface2); }
+  tr:last-child td { border-bottom: none; }
+
+  /* TAGS */
+  .tag {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+  }
+  .tag-0 { background: rgba(0,229,180,.15); color: var(--accent); }
+  .tag-1 { background: rgba(108,99,255,.15); color: var(--accent4); }
+  .tag-2 { background: rgba(255,217,61,.15); color: var(--accent3); }
+  .tag-3 { background: rgba(255,78,106,.15); color: var(--accent2); }
+  .tag-4 { background: rgba(100,160,255,.15); color: #64a0ff; }
+
+  /* CHART CONTAINER */
+  .chart-wrap { position: relative; height: 280px; }
+  .chart-wrap-tall { position: relative; height: 360px; }
+
+  /* ACCOUNTS */
+  .account-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .account-chip:hover { border-color: var(--accent); }
+  .account-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .accounts-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab {
+    padding: 8px 16px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; color: var(--text-muted);
+    transition: all .15s;
+    background: transparent;
+    border: 1px solid transparent;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--surface2); border-color: var(--border); color: var(--accent); font-weight: 700; }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* FILTER ROW */
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+
+  /* PROFIT ENTRY */
+  .profit-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* TICKER LIST */
+  .ticker-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .ticker-item:hover { border-color: var(--accent); }
+  .ticker-item.selected { border-color: var(--accent); background: rgba(0,229,180,.06); }
+  .ticker-name { font-weight: 700; font-size: 15px; }
+  .ticker-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  .section-gap { margin-bottom: 20px; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+  .badge-pos { background: rgba(0,229,180,.2); color: var(--accent); }
+  .badge-neg { background: rgba(255,78,106,.2); color: var(--accent2); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 440px;
+    max-width: 95vw;
+  }
+  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 2px; margin-bottom: 20px; }
+
+  .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch {
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform .1s;
+  }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.selected { border-color: white; }
+
+  /* scroll */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .flex { display: flex; }
+  .gap-10 { gap: 10px; }
+  .gap-16 { gap: 16px; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-20 { margin-bottom: 20px; }
+  .mt-20 { margin-top: 20px; }
+  .flex-1 { flex: 1; }
+  .w-full { width: 100%; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="logo">FOLIO<span>PORTFOLIO TRACKER</span></div>
+    <div class="nav">
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <span class="icon">📊</span> 대시보드
+      </div>
+      <div class="nav-item" onclick="showPage('trade')">
+        <span class="icon">📝</span> 거래 입력
+      </div>
+      <div class="nav-item" onclick="showPage('accounts')">
+        <span class="icon">🏦</span> 계좌 관리
+      </div>
+      <div class="nav-item" onclick="showPage('analyze')">
+        <span class="icon">📈</span> 분석
+      </div>
+      <div class="nav-item" onclick="showPage('profit')">
+        <span class="icon">💹</span> 수익 추적
+      </div>
+      <div class="nav-item" onclick="showPage('history')">
+        <span class="icon">📋</span> 거래 내역
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ===== DASHBOARD ===== -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div class="page-title">DASHBOARD</div>
+        <div class="page-sub">포트폴리오 현황 요약</div>
+      </div>
+
+      <div class="grid-4 mb-20" id="dash-stats"></div>
+
+      <div class="grid-2 section-gap">
+        <div class="card">
+          <div class="card-title">계좌별 자산 분포</div>
+          <div class="chart-wrap"><canvas id="chart-account-pie"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">분류별 자산 분포</div>
+          <div class="chart-wrap"><canvas id="chart-category-pie"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">보유 종목 현황</div>
+        <div class="table-wrap" id="dash-holdings"></div>
+      </div>
+    </div>
+
+    <!-- ===== TRADE INPUT ===== -->
+    <div id="page-trade" class="page">
+      <div class="page-header">
+        <div class="page-title">거래 입력</div>
+        <div class="page-sub">매수/매도 내역을 입력하세요</div>
+      </div>
+
+      <div class="card mb-20">
+        <div class="card-title">새 거래 추가</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">날짜</label>
+            <input type="date" id="t-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">계좌</label>
+            <select id="t-account"><option value="">계좌 선택</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">분류</label>
+            <input type="text" id="t-category" placeholder="예: 국내주식, ETF, 코인">
+          </div>
+          <div class="form-group">
+            <label class="form-label">종목 (티커)</label>
+            <input type="text" id="t-ticker" placeholder="예: AAPL, 삼성전자">
+          </div>
+          <div class="form-group">
+            <label class="form-label">거래 유형</label>
+            <select id="t-type">
+              <option value="buy">매수</option>
+              <option value="sell">매도</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">수량</label>
+            <input type="number" id="t-qty" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">가격</label>
+            <input type="number" id="t-price" placeholder="0">
+          </div>
+          <div class="form-group" style="align-self:end">
+            <button class="btn btn-primary w-full" onclick="addTrade()">+ 추가</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">최근 거래 내역</div>
+        <div class="table-wrap" id="recent-trades"></div>
+      </div>
+    </div>
+
+    <!-- ===== ACCOUNTS ===== -->
+    <div id="page-accounts" class="page">
+      <div class="page-header">
+        <div class="page-title">계좌 관리</div>
+        <div class="page-sub">계좌를 추가하고 태그로 용도를 구분하세요</div>
+      </div>
+
+      <div class="card mb-20">
+        <div class="card-title">계좌 추가</div>
+        <div class="form-grid">
+          <div class="form-group" style="grid-column: span 2">
+            <label class="form-label">계좌명</label>
+            <input type="text" id="acc-name" placeholder="예: KB증권 ISA, 키움 위탁">
+          </div>
+          <div class="form-group" style="grid-column: span 2">
+            <label class="form-label">태그 (쉼표로 구분)</label>
+            <input type="text" id="acc-tags" placeholder="예: 장기투자, 배당, 해외주식">
+          </div>
+          <div class="form-group">
+            <label class="form-label">색상</label>
+            <div class="color-swatches" id="acc-color-swatches"></div>
+          </div>
+          <div class="form-group" style="align-self:end">
+            <button class="btn btn-primary w-full" onclick="addAccount()">+ 계좌 추가</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">등록된 계좌</div>
+        <div id="accounts-list-view"></div>
+      </div>
+    </div>
+
+    <!-- ===== ANALYZE ===== -->
+    <div id="page-analyze" class="page">
+      <div class="page-header">
+        <div class="page-title">분석</div>
+        <div class="page-sub">계좌별·분류별·종목별 자산 시각화</div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="setAnalyzeTab('account')">계좌별</div>
+        <div class="tab" onclick="setAnalyzeTab('category')">분류별</div>
+        <div class="tab" onclick="setAnalyzeTab('ticker')">종목별</div>
+      </div>
+
+      <div id="analyze-content"></div>
+    </div>
+
+    <!-- ===== PROFIT TRACKER ===== -->
+    <div id="page-profit" class="page">
+      <div class="page-header">
+        <div class="page-title">수익 추적</div>
+        <div class="page-sub">매일 종가를 입력하면 수익 흐름을 시각화합니다</div>
+      </div>
+
+      <div class="card mb-20">
+        <div class="card-title">종가 입력</div>
+        <div id="price-input-area">
+          <div class="empty-state"><div class="empty-icon">📉</div>보유 종목이 없습니다. 거래 입력 후 이용하세요.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">수익 흐름 그래프</div>
+        <div class="filter-row">
+          <select id="profit-ticker-select" style="width:180px" onchange="renderProfitChart()">
+            <option value="all">전체 포트폴리오</option>
+          </select>
+          <select id="profit-period" style="width:120px" onchange="renderProfitChart()">
+            <option value="30">최근 30일</option>
+            <option value="90">최근 90일</option>
+            <option value="180">최근 180일</option>
+            <option value="all">전체</option>
+          </select>
+        </div>
+        <div class="chart-wrap-tall"><canvas id="chart-profit"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ===== HISTORY ===== -->
+    <div id="page-history" class="page">
+      <div class="page-header">
+        <div class="page-title">거래 내역</div>
+        <div class="page-sub">전체 거래 내역을 조회합니다</div>
+      </div>
+
+      <div class="card">
+        <div class="filter-row mb-16">
+          <select id="h-account" style="width:150px" onchange="renderHistory()">
+            <option value="">전체 계좌</option>
+          </select>
+          <select id="h-category" style="width:140px" onchange="renderHistory()">
+            <option value="">전체 분류</option>
+          </select>
+          <input type="text" id="h-ticker" placeholder="종목 검색" style="width:140px" oninput="renderHistory()">
+        </div>
+        <div class="table-wrap" id="history-table"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: Account edit -->
+<div class="modal-overlay" id="modal-acc">
+  <div class="modal">
+    <div class="modal-title">계좌 편집</div>
+    <div class="form-group mb-16">
+      <label class="form-label">계좌명</label>
+      <input type="text" id="edit-acc-name">
+    </div>
+    <div class="form-group mb-16">
+      <label class="form-label">태그</label>
+      <input type="text" id="edit-acc-tags">
+    </div>
+    <div class="form-group mb-20">
+      <label class="form-label">색상</label>
+      <div class="color-swatches" id="edit-color-swatches"></div>
+    </div>
+    <div class="flex gap-10">
+      <button class="btn btn-primary flex-1" onclick="saveAccountEdit()">저장</button>
+      <button class="btn btn-ghost" onclick="closeModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== DATA STORE ====================
+const COLORS = ['#00e5b4','#6c63ff','#ffd93d','#ff4e6a','#64a0ff','#ff9f43','#a29bfe','#fd79a8','#55efc4','#fdcb6e'];
+
+let data = JSON.parse(localStorage.getItem('folio_data') || 'null') || {
+  accounts: [],
+  trades: [],
+  prices: {},   // { ticker: { date: price } }
+};
+let selectedAccColor = COLORS[0];
+let editAccColor = COLORS[0];
+let editAccId = null;
+let analyzeTab = 'account';
+let chartInstances = {};
+
+function save() {
+  localStorage.setItem('folio_data', JSON.stringify(data));
+}
+
+// ==================== PAGE NAV ====================
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  const navItems = document.querySelectorAll('.nav-item');
+  const pages = ['dashboard','trade','accounts','analyze','profit','history'];
+  navItems[pages.indexOf(p)].classList.add('active');
+  setTimeout(() => {
+    if (p === 'dashboard') renderDashboard();
+    if (p === 'trade') renderTradeForm();
+    if (p === 'accounts') renderAccounts();
+    if (p === 'analyze') renderAnalyze();
+    if (p === 'profit') renderProfit();
+    if (p === 'history') renderHistory();
+  }, 50);
+}
+
+// ==================== ACCOUNTS ====================
+function initColorSwatches(containerId, initial, onSelect) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = COLORS.map((c, i) => `
+    <div class="swatch ${c === initial ? 'selected' : ''}" style="background:${c}" 
+         onclick="selectSwatch('${containerId}', '${c}', this, ${i})" title="${c}"></div>
+  `).join('');
+}
+
+function selectSwatch(containerId, color, el, idx) {
+  document.querySelectorAll(`#${containerId} .swatch`).forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  if (containerId === 'acc-color-swatches') selectedAccColor = color;
+  else editAccColor = color;
+}
+
+function addAccount() {
+  const name = document.getElementById('acc-name').value.trim();
+  if (!name) return alert('계좌명을 입력하세요.');
+  const tags = document.getElementById('acc-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+  data.accounts.push({ id: Date.now(), name, tags, color: selectedAccColor });
+  save();
+  document.getElementById('acc-name').value = '';
+  document.getElementById('acc-tags').value = '';
+  renderAccounts();
+  renderTradeForm();
+}
+
+function renderAccounts() {
+  initColorSwatches('acc-color-swatches', selectedAccColor);
+  const el = document.getElementById('accounts-list-view');
+  if (!data.accounts.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏦</div>등록된 계좌가 없습니다.</div>';
+    return;
+  }
+  el.innerHTML = data.accounts.map(acc => `
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface2);border-radius:10px;margin-bottom:8px;border:1px solid var(--border)">
+      <div style="width:12px;height:12px;border-radius:50%;background:${acc.color};flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:15px">${acc.name}</div>
+        <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
+          ${acc.tags.map((t,i) => `<span class="tag tag-${i%5}">${t}</span>`).join('')}
+          ${!acc.tags.length ? '<span style="color:var(--text-muted);font-size:12px">태그 없음</span>' : ''}
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openEditAccount(${acc.id})">편집</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteAccount(${acc.id})">삭제</button>
+    </div>
+  `).join('');
+}
+
+function openEditAccount(id) {
+  editAccId = id;
+  const acc = data.accounts.find(a => a.id === id);
+  document.getElementById('edit-acc-name').value = acc.name;
+  document.getElementById('edit-acc-tags').value = acc.tags.join(', ');
+  editAccColor = acc.color;
+  initColorSwatches('edit-color-swatches', acc.color);
+  document.getElementById('modal-acc').classList.add('open');
+}
+
+function saveAccountEdit() {
+  const acc = data.accounts.find(a => a.id === editAccId);
+  acc.name = document.getElementById('edit-acc-name').value.trim() || acc.name;
+  acc.tags = document.getElementById('edit-acc-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+  acc.color = editAccColor;
+  save();
+  closeModal();
+  renderAccounts();
+}
+
+function deleteAccount(id) {
+  if (!confirm('계좌를 삭제하시겠습니까? 관련 거래 내역은 유지됩니다.')) return;
+  data.accounts = data.accounts.filter(a => a.id !== id);
+  save();
+  renderAccounts();
+}
+
+function closeModal() {
+  document.getElementById('modal-acc').classList.remove('open');
+}
+
+// ==================== TRADE INPUT ====================
+function renderTradeForm() {
+  const sel = document.getElementById('t-account');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">계좌 선택</option>' +
+    data.accounts.map(a => `<option value="${a.id}" ${cur == a.id ? 'selected' : ''}>${a.name}</option>`).join('');
+  renderRecentTrades();
+}
+
+function addTrade() {
+  const date = document.getElementById('t-date').value;
+  const accId = parseInt(document.getElementById('t-account').value);
+  const category = document.getElementById('t-category').value.trim();
+  const ticker = document.getElementById('t-ticker').value.trim().toUpperCase();
+  const type = document.getElementById('t-type').value;
+  const qty = parseFloat(document.getElementById('t-qty').value);
+  const price = parseFloat(document.getElementById('t-price').value);
+
+  if (!date || !accId || !category || !ticker || !qty || !price) return alert('모든 항목을 입력하세요.');
+  
+  data.trades.push({ id: Date.now(), date, accId, category, ticker, type, qty, price });
+  save();
+  document.getElementById('t-qty').value = '';
+  document.getElementById('t-price').value = '';
+  renderRecentTrades();
+  updateProfitSelects();
+}
+
+function deleteTrade(id) {
+  data.trades = data.trades.filter(t => t.id !== id);
+  save();
+  renderRecentTrades();
+}
+
+function renderRecentTrades() {
+  const recent = [...data.trades].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 20);
+  renderTradeTable('recent-trades', recent, true);
+}
+
+function renderTradeTable(containerId, trades, showDelete) {
+  const el = document.getElementById(containerId);
+  if (!trades.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>거래 내역이 없습니다.</div>';
+    return;
+  }
+  el.innerHTML = `<table>
+    <thead><tr>
+      <th>날짜</th><th>계좌</th><th>분류</th><th>종목</th><th>유형</th><th>수량</th><th>가격</th><th>금액</th>
+      ${showDelete ? '<th></th>' : ''}
+    </tr></thead>
+    <tbody>
+    ${trades.map(t => {
+      const acc = data.accounts.find(a => a.id === t.accId);
+      return `<tr>
+        <td>${t.date}</td>
+        <td><span style="display:inline-flex;align-items:center;gap:5px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${acc?.color||'#888'}"></span>
+          ${acc?.name||'삭제된계좌'}
+        </span></td>
+        <td>${t.category}</td>
+        <td><b>${t.ticker}</b></td>
+        <td><span class="badge ${t.type==='buy'?'badge-pos':'badge-neg'}">${t.type==='buy'?'매수':'매도'}</span></td>
+        <td>${t.qty.toLocaleString()}</td>
+        <td>${t.price.toLocaleString()}</td>
+        <td><b>${(t.qty * t.price).toLocaleString()}</b></td>
+        ${showDelete ? `<td><button class="btn btn-danger btn-sm" onclick="deleteTrade(${t.id})">삭제</button></td>` : ''}
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+}
+
+// ==================== HOLDINGS ====================
+function getHoldings() {
+  const map = {};
+  data.trades.forEach(t => {
+    const key = t.ticker;
+    if (!map[key]) map[key] = { ticker: t.ticker, category: t.category, qty: 0, cost: 0, accIds: new Set() };
+    if (t.type === 'buy') {
+      map[key].qty += t.qty;
+      map[key].cost += t.qty * t.price;
+    } else {
+      map[key].qty -= t.qty;
+      map[key].cost -= t.qty * t.price;
+    }
+    map[key].accIds.add(t.accId);
+  });
+  return Object.values(map).filter(h => h.qty > 0.0001);
+}
+
+function getHoldingsByAccount() {
+  const map = {};
+  data.trades.forEach(t => {
+    const acc = data.accounts.find(a => a.id === t.accId);
+    const key = acc?.name || '알수없음';
+    if (!map[key]) map[key] = { name: key, color: acc?.color || '#888', value: 0 };
+    map[key].value += (t.type === 'buy' ? 1 : -1) * t.qty * t.price;
+  });
+  return Object.values(map).filter(v => v.value > 0);
+}
+
+function getHoldingsByCategory() {
+  const map = {};
+  data.trades.forEach(t => {
+    const key = t.category;
+    if (!map[key]) map[key] = { name: key, value: 0 };
+    map[key].value += (t.type === 'buy' ? 1 : -1) * t.qty * t.price;
+  });
+  return Object.values(map).filter(v => v.value > 0);
+}
+
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+  const holdings = getHoldings();
+  const totalCost = holdings.reduce((s, h) => s + h.cost, 0);
+  
+  // Get latest prices for profit calc
+  let totalMarket = 0;
+  holdings.forEach(h => {
+    const priceData = data.prices[h.ticker] || {};
+    const dates = Object.keys(priceData).sort();
+    const latestPrice = dates.length ? priceData[dates[dates.length-1]] : (h.cost / h.qty);
+    totalMarket += latestPrice * h.qty;
+  });
+  const totalPnl = totalMarket - totalCost;
+  const pnlPct = totalCost ? (totalPnl / totalCost * 100) : 0;
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">총 투자금액</div>
+      <div class="stat-value">${Math.round(totalCost).toLocaleString()}</div>
+      <div class="stat-sub">원 (매수 기준)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">평가금액</div>
+      <div class="stat-value">${Math.round(totalMarket).toLocaleString()}</div>
+      <div class="stat-sub">원</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">평가손익</div>
+      <div class="stat-value ${totalPnl >= 0 ? 'pos' : 'neg'}">${totalPnl >= 0 ? '+' : ''}${Math.round(totalPnl).toLocaleString()}</div>
+      <div class="stat-sub">원</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">수익률</div>
+      <div class="stat-value ${pnlPct >= 0 ? 'pos' : 'neg'}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</div>
+      <div class="stat-sub">전체 포트폴리오</div>
+    </div>
+  `;
+
+  // Account pie
+  const byAccount = getHoldingsByAccount();
+  destroyChart('chart-account-pie');
+  if (byAccount.length) {
+    chartInstances['chart-account-pie'] = new Chart(document.getElementById('chart-account-pie'), {
+      type: 'doughnut',
+      data: {
+        labels: byAccount.map(a => a.name),
+        datasets: [{ data: byAccount.map(a => Math.round(a.value)), backgroundColor: byAccount.map(a => a.color), borderWidth: 2, borderColor: '#111318' }]
+      },
+      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
+    });
+  }
+
+  // Category pie
+  const byCategory = getHoldingsByCategory();
+  destroyChart('chart-category-pie');
+  if (byCategory.length) {
+    chartInstances['chart-category-pie'] = new Chart(document.getElementById('chart-category-pie'), {
+      type: 'doughnut',
+      data: {
+        labels: byCategory.map(c => c.name),
+        datasets: [{ data: byCategory.map(c => Math.round(c.value)), backgroundColor: COLORS, borderWidth: 2, borderColor: '#111318' }]
+      },
+      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
+    });
+  }
+
+  // Holdings table
+  const htEl = document.getElementById('dash-holdings');
+  if (!holdings.length) {
+    htEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div>보유 종목이 없습니다.</div>';
+    return;
+  }
+  htEl.innerHTML = `<table>
+    <thead><tr><th>종목</th><th>분류</th><th>수량</th><th>평균단가</th><th>최근종가</th><th>평가금액</th><th>손익</th><th>수익률</th></tr></thead>
+    <tbody>
+    ${holdings.map(h => {
+      const avgPrice = h.cost / h.qty;
+      const priceData = data.prices[h.ticker] || {};
+      const dates = Object.keys(priceData).sort();
+      const latestPrice = dates.length ? priceData[dates[dates.length-1]] : null;
+      const marketVal = latestPrice ? latestPrice * h.qty : h.cost;
+      const pnl = marketVal - h.cost;
+      const pct = (pnl / h.cost * 100);
+      return `<tr>
+        <td><b>${h.ticker}</b></td>
+        <td><span class="tag tag-0">${h.category}</span></td>
+        <td>${h.qty.toLocaleString()}</td>
+        <td>${Math.round(avgPrice).toLocaleString()}</td>
+        <td>${latestPrice ? latestPrice.toLocaleString() : '<span style="color:var(--text-muted)">미입력</span>'}</td>
+        <td>${Math.round(marketVal).toLocaleString()}</td>
+        <td class="${pnl>=0?'pos':'neg'}">${pnl>=0?'+':''}${Math.round(pnl).toLocaleString()}</td>
+        <td class="${pct>=0?'pos':'neg'}">${pct>=0?'+':''}${pct.toFixed(2)}%</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+}
+
+// ==================== ANALYZE ====================
+function setAnalyzeTab(tab) {
+  analyzeTab = tab;
+  document.querySelectorAll('.tabs .tab').forEach((t,i) => {
+    t.classList.toggle('active', ['account','category','ticker'][i] === tab);
+  });
+  renderAnalyze();
+}
+
+function renderAnalyze() {
+  const el = document.getElementById('analyze-content');
+  if (analyzeTab === 'account') renderAnalyzeAccount(el);
+  else if (analyzeTab === 'category') renderAnalyzeCategory(el);
+  else renderAnalyzeTicker(el);
+}
+
+function renderAnalyzeAccount(el) {
+  const byAcc = getHoldingsByAccount();
+  if (!byAcc.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏦</div>거래 내역이 없습니다.</div>'; return; }
+  el.innerHTML = `
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">계좌별 자산 비율</div>
+        <div class="chart-wrap"><canvas id="analyze-acc-pie"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">계좌별 자산 금액</div>
+        <div class="chart-wrap"><canvas id="analyze-acc-bar"></canvas></div>
+      </div>
+    </div>
+  `;
+  setTimeout(() => {
+    destroyChart('analyze-acc-pie');
+    destroyChart('analyze-acc-bar');
+    chartInstances['analyze-acc-pie'] = new Chart(document.getElementById('analyze-acc-pie'), {
+      type: 'doughnut',
+      data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color), borderWidth:2, borderColor:'#111318' }] },
+      options: { plugins: { legend: { labels: { color:'#8892a4' } } } }
+    });
+    chartInstances['analyze-acc-bar'] = new Chart(document.getElementById('analyze-acc-bar'), {
+      type: 'bar',
+      data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color+'99'), borderColor: byAcc.map(a=>a.color), borderWidth:1 }] },
+      options: { plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } } }
+    });
+  }, 50);
+}
+
+function renderAnalyzeCategory(el) {
+  const byCat = getHoldingsByCategory();
+  if (!byCat.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div>거래 내역이 없습니다.</div>'; return; }
+  el.innerHTML = `
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">분류별 자산 비율</div>
+        <div class="chart-wrap"><canvas id="analyze-cat-pie"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">분류별 자산 금액</div>
+        <div class="chart-wrap"><canvas id="analyze-cat-bar"></canvas></div>
+      </div>
+    </div>
+  `;
+  setTimeout(() => {
+    destroyChart('analyze-cat-pie');
+    destroyChart('analyze-cat-bar');
+    chartInstances['analyze-cat-pie'] = new Chart(document.getElementById('analyze-cat-pie'), {
+      type: 'doughnut',
+      data: { labels: byCat.map(c=>c.name), datasets: [{ data: byCat.map(c=>Math.round(c.value)), backgroundColor: COLORS, borderWidth:2, borderColor:'#111318' }] },
+      options: { plugins: { legend: { labels: { color:'#8892a4' } } } }
+    });
+    chartInstances['analyze-cat-bar'] = new Chart(document.getElementById('analyze-cat-bar'), {
+      type: 'bar',
+      data: { labels: byCat.map(c=>c.name), datasets: [{ data: byCat.map(c=>Math.round(c.value)), backgroundColor: COLORS.map(c=>c+'99'), borderColor: COLORS, borderWidth:1 }] },
+      options: { plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } } }
+    });
+  }, 50);
+}
+
+function renderAnalyzeTicker(el) {
+  const holdings = getHoldings();
+  if (!holdings.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>보유 종목이 없습니다.</div>'; return; }
+  el.innerHTML = `
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">종목별 비중 (투자금 기준)</div>
+        <div class="chart-wrap"><canvas id="analyze-tick-pie"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">종목별 투자금액</div>
+        <div class="chart-wrap"><canvas id="analyze-tick-bar"></canvas></div>
+      </div>
+    </div>
+  `;
+  setTimeout(() => {
+    destroyChart('analyze-tick-pie');
+    destroyChart('analyze-tick-bar');
+    chartInstances['analyze-tick-pie'] = new Chart(document.getElementById('analyze-tick-pie'), {
+      type: 'doughnut',
+      data: { labels: holdings.map(h=>h.ticker), datasets: [{ data: holdings.map(h=>Math.round(h.cost)), backgroundColor: COLORS, borderWidth:2, borderColor:'#111318' }] },
+      options: { plugins: { legend: { labels: { color:'#8892a4' } } } }
+    });
+    chartInstances['analyze-tick-bar'] = new Chart(document.getElementById('analyze-tick-bar'), {
+      type: 'bar',
+      data: { labels: holdings.map(h=>h.ticker), datasets: [{ data: holdings.map(h=>Math.round(h.cost)), backgroundColor: COLORS.map(c=>c+'99'), borderColor: COLORS, borderWidth:1 }] },
+      options: { plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } } }
+    });
+  }, 50);
+}
+
+// ==================== PROFIT TRACKER ====================
+function renderProfit() {
+  updateProfitSelects();
+  renderPriceInputArea();
+  renderProfitChart();
+}
+
+function updateProfitSelects() {
+  const holdings = getHoldings();
+  const sel = document.getElementById('profit-ticker-select');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="all">전체 포트폴리오</option>' +
+    holdings.map(h => `<option value="${h.ticker}" ${cur===h.ticker?'selected':''}>${h.ticker}</option>`).join('');
+}
+
+function renderPriceInputArea() {
+  const holdings = getHoldings();
+  const el = document.getElementById('price-input-area');
+  if (!holdings.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📉</div>보유 종목이 없습니다. 거래 입력 후 이용하세요.</div>';
+    return;
+  }
+  const today = new Date().toISOString().slice(0,10);
+  el.innerHTML = `
+    <div class="form-grid mb-16">
+      <div class="form-group">
+        <label class="form-label">날짜</label>
+        <input type="date" id="price-date" value="${today}">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px" id="price-inputs">
+      ${holdings.map(h => {
+        const priceData = data.prices[h.ticker] || {};
+        const existing = priceData[today] || '';
+        return `
+          <div class="form-group">
+            <label class="form-label">${h.ticker} 종가</label>
+            <input type="number" id="pi-${h.ticker}" placeholder="종가 입력" value="${existing}">
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <button class="btn btn-primary" onclick="savePrices()">종가 저장</button>
+  `;
+}
+
+function savePrices() {
+  const date = document.getElementById('price-date').value;
+  if (!date) return alert('날짜를 선택하세요.');
+  const holdings = getHoldings();
+  holdings.forEach(h => {
+    const inp = document.getElementById('pi-' + h.ticker);
+    if (inp && inp.value) {
+      if (!data.prices[h.ticker]) data.prices[h.ticker] = {};
+      data.prices[h.ticker][date] = parseFloat(inp.value);
+    }
+  });
+  save();
+  renderProfitChart();
+  alert('종가가 저장되었습니다.');
+}
+
+function renderProfitChart() {
+  const ticker = document.getElementById('profit-ticker-select')?.value || 'all';
+  const period = document.getElementById('profit-period')?.value || '30';
+  const holdings = getHoldings();
+
+  if (!holdings.length) return;
+
+  // Gather all dates with price data
+  let allDates = new Set();
+  holdings.forEach(h => {
+    Object.keys(data.prices[h.ticker] || {}).forEach(d => allDates.add(d));
+  });
+  allDates = [...allDates].sort();
+
+  if (period !== 'all') {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - parseInt(period));
+    allDates = allDates.filter(d => new Date(d) >= cutoff);
+  }
+
+  if (!allDates.length) {
+    destroyChart('chart-profit');
+    return;
+  }
+
+  let datasets = [];
+  let labels = allDates;
+
+  if (ticker === 'all') {
+    // Portfolio total profit %
+    const portValues = allDates.map(date => {
+      let totalCost = 0, totalMarket = 0;
+      holdings.forEach(h => {
+        const pd = data.prices[h.ticker] || {};
+        const availDates = Object.keys(pd).filter(d => d <= date).sort();
+        const price = availDates.length ? pd[availDates[availDates.length-1]] : null;
+        if (price) {
+          totalCost += h.cost;
+          totalMarket += price * h.qty;
+        }
+      });
+      return totalCost ? ((totalMarket - totalCost) / totalCost * 100) : null;
+    });
+    datasets = [{
+      label: '포트폴리오 수익률 (%)',
+      data: portValues,
+      borderColor: '#00e5b4',
+      backgroundColor: 'rgba(0,229,180,0.08)',
+      tension: 0.3, fill: true, spanGaps: true, pointRadius: 3
+    }];
+  } else {
+    // Single ticker profit %
+    const h = holdings.find(x => x.ticker === ticker);
+    if (!h) return;
+    const avgPrice = h.cost / h.qty;
+    const values = allDates.map(date => {
+      const pd = data.prices[ticker] || {};
+      const availDates = Object.keys(pd).filter(d => d <= date).sort();
+      const price = availDates.length ? pd[availDates[availDates.length-1]] : null;
+      return price ? ((price - avgPrice) / avgPrice * 100) : null;
+    });
+    datasets = [{
+      label: `${ticker} 수익률 (%)`,
+      data: values,
+      borderColor: '#6c63ff',
+      backgroundColor: 'rgba(108,99,255,0.08)',
+      tension: 0.3, fill: true, spanGaps: true, pointRadius: 3
+    }];
+  }
+
+  destroyChart('chart-profit');
+  chartInstances['chart-profit'] = new Chart(document.getElementById('chart-profit'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8892a4' } } },
+      scales: {
+        x: { ticks: { color: '#8892a4', maxTicksLimit: 12 }, grid: { color: '#1e2530' } },
+        y: {
+          ticks: { color: '#8892a4', callback: v => v?.toFixed(2) + '%' },
+          grid: { color: '#1e2530' },
+          afterDataLimits(axis) {
+            axis.min = Math.min(axis.min, 0) - 1;
+            axis.max = Math.max(axis.max, 0) + 1;
+          }
+        }
+      }
+    }
+  });
+}
+
+// ==================== HISTORY ====================
+function renderHistory() {
+  // Populate filters
+  const accSel = document.getElementById('h-account');
+  const catSel = document.getElementById('h-category');
+  const curAcc = accSel.value;
+  const curCat = catSel.value;
+  const cats = [...new Set(data.trades.map(t => t.category))];
+  accSel.innerHTML = '<option value="">전체 계좌</option>' + data.accounts.map(a => `<option value="${a.id}" ${curAcc==a.id?'selected':''}>${a.name}</option>`).join('');
+  catSel.innerHTML = '<option value="">전체 분류</option>' + cats.map(c => `<option value="${c}" ${curCat===c?'selected':''}>${c}</option>`).join('');
+
+  let trades = [...data.trades].sort((a,b) => b.date.localeCompare(a.date));
+  const accFilter = document.getElementById('h-account').value;
+  const catFilter = document.getElementById('h-category').value;
+  const tickFilter = document.getElementById('h-ticker').value.trim().toUpperCase();
+
+  if (accFilter) trades = trades.filter(t => t.accId == accFilter);
+  if (catFilter) trades = trades.filter(t => t.category === catFilter);
+  if (tickFilter) trades = trades.filter(t => t.ticker.includes(tickFilter));
+
+  renderTradeTable('history-table', trades, false);
+}
+
+// ==================== UTILS ====================
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+// ==================== INIT ====================
+function init() {
+  const today = new Date().toISOString().slice(0,10);
+  const tDate = document.getElementById('t-date');
+  if (tDate) tDate.value = today;
+  initColorSwatches('acc-color-swatches', COLORS[0]);
+  renderTradeForm();
+  renderDashboard();
+}
+
+document.getElementById('modal-acc').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+init();
+</script>
+</body>
+</html>
