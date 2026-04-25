@@ -332,6 +332,9 @@
       <div class="nav-item" onclick="showPage('history')">
         <span class="icon">📋</span> 거래 내역
       </div>
+      <div class="nav-item" onclick="showPage('sync')">
+        <span class="icon">🔄</span> 기기 동기화
+      </div>
     </div>
   </nav>
 
@@ -518,6 +521,91 @@
       </div>
     </div>
 
+    <!-- ===== SYNC ===== -->
+    <div id="page-sync" class="page">
+      <div class="page-header">
+        <div class="page-title">기기 동기화</div>
+        <div class="page-sub">iPhone ↔ iPad 데이터 옮기기 (AirDrop / iCloud)</div>
+      </div>
+
+      <!-- EXPORT -->
+      <div class="card mb-20">
+        <div class="card-title">📤 내보내기 — 이 기기에서 데이터 저장</div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
+          아래 버튼을 누르면 현재 모든 데이터(계좌·거래·종가)가 <b style="color:var(--text)">JSON 파일</b>로 저장됩니다.<br>
+          저장된 파일을 <b style="color:var(--accent)">AirDrop</b> 또는 <b style="color:var(--accent)">iCloud Drive</b>로 다른 기기에 전송하세요.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" onclick="exportData()">📤 데이터 내보내기 (.json)</button>
+          <span id="export-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+        <div class="divider"></div>
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;font-size:12px;color:var(--text-dim);line-height:2">
+          <b style="color:var(--text);display:block;margin-bottom:6px">📱 전송 방법</b>
+          <b style="color:var(--accent)">AirDrop:</b> 파일 앱 → 저장된 JSON → 공유 → AirDrop → 상대 기기 선택<br>
+          <b style="color:var(--accent)">iCloud:</b> 파일 앱 → JSON을 iCloud Drive로 이동 → 다른 기기 파일 앱에서 열기
+        </div>
+      </div>
+
+      <!-- IMPORT -->
+      <div class="card mb-20">
+        <div class="card-title">📥 가져오기 — 다른 기기 데이터 불러오기</div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
+          다른 기기에서 내보낸 JSON 파일을 선택하면 데이터가 <b style="color:var(--accent2)">현재 기기에 덮어씌워집니다.</b><br>
+          가져오기 전에 현재 데이터를 먼저 내보내두는 것을 권장합니다.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <label class="btn btn-ghost" style="cursor:pointer">
+            📥 JSON 파일 선택
+            <input type="file" accept=".json" id="import-file" style="display:none" onchange="importData(event)">
+          </label>
+          <span id="import-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+      </div>
+
+      <!-- MERGE -->
+      <div class="card mb-20">
+        <div class="card-title">🔀 병합 가져오기 — 두 기기 데이터 합치기</div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
+          덮어쓰지 않고 <b style="color:var(--text)">기존 데이터에 추가</b>합니다. 중복 거래는 자동으로 제거됩니다.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <label class="btn btn-ghost" style="cursor:pointer">
+            🔀 병합할 JSON 파일 선택
+            <input type="file" accept=".json" id="merge-file" style="display:none" onchange="mergeData(event)">
+          </label>
+          <span id="merge-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+      </div>
+
+      <!-- GUIDE -->
+      <div class="card">
+        <div class="card-title">💡 권장 사용 흐름</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+          <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
+            <div style="font-size:22px;margin-bottom:8px">1️⃣</div>
+            <div style="font-weight:700;margin-bottom:4px">iPhone에서 입력</div>
+            <div style="font-size:12px;color:var(--text-muted)">거래 내역, 종가 등 데이터 입력</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
+            <div style="font-size:22px;margin-bottom:8px">2️⃣</div>
+            <div style="font-weight:700;margin-bottom:4px">내보내기</div>
+            <div style="font-size:12px;color:var(--text-muted)">동기화 탭 → 데이터 내보내기</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
+            <div style="font-size:22px;margin-bottom:8px">3️⃣</div>
+            <div style="font-weight:700;margin-bottom:4px">AirDrop 전송</div>
+            <div style="font-size:12px;color:var(--text-muted)">JSON 파일을 iPad로 AirDrop</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
+            <div style="font-size:22px;margin-bottom:8px">4️⃣</div>
+            <div style="font-weight:700;margin-bottom:4px">iPad에서 가져오기</div>
+            <div style="font-size:12px;color:var(--text-muted)">동기화 탭 → JSON 파일 선택</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -569,7 +657,7 @@ function showPage(p) {
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.getElementById('page-' + p).classList.add('active');
   const navItems = document.querySelectorAll('.nav-item');
-  const pages = ['dashboard','trade','accounts','analyze','profit','history'];
+  const pages = ['dashboard','trade','accounts','analyze','profit','history','sync'];
   navItems[pages.indexOf(p)].classList.add('active');
   setTimeout(() => {
     if (p === 'dashboard') renderDashboard();
@@ -1160,7 +1248,80 @@ function renderHistory() {
   renderTradeTable('history-table', trades, false);
 }
 
-// ==================== UTILS ====================
+// ==================== EXPORT / IMPORT ====================
+function exportData() {
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `folio_backup_${now}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  const el = document.getElementById('export-status');
+  if (el) { el.textContent = `✅ ${now} 저장 완료`; el.style.color = 'var(--accent)'; }
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!imported.accounts || !imported.trades) throw new Error('올바른 파일이 아닙니다.');
+      if (!confirm(`⚠️ 현재 데이터를 모두 지우고 불러온 데이터로 교체합니다.\n계속하시겠습니까?`)) return;
+      data = imported;
+      save();
+      const el = document.getElementById('import-status');
+      if (el) { el.textContent = `✅ 가져오기 완료 (거래 ${data.trades.length}건, 계좌 ${data.accounts.length}개)`; el.style.color = 'var(--accent)'; }
+      e.target.value = '';
+    } catch(err) {
+      alert('❌ 파일을 읽을 수 없습니다: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function mergeData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!imported.accounts || !imported.trades) throw new Error('올바른 파일이 아닙니다.');
+
+      // Merge accounts (by id)
+      const existingAccIds = new Set(data.accounts.map(a => a.id));
+      imported.accounts.forEach(a => { if (!existingAccIds.has(a.id)) data.accounts.push(a); });
+
+      // Merge trades (by id)
+      const existingTradeIds = new Set(data.trades.map(t => t.id));
+      let added = 0;
+      imported.trades.forEach(t => { if (!existingTradeIds.has(t.id)) { data.trades.push(t); added++; } });
+
+      // Merge prices
+      if (imported.prices) {
+        Object.keys(imported.prices).forEach(ticker => {
+          if (!data.prices[ticker]) data.prices[ticker] = {};
+          Object.assign(data.prices[ticker], imported.prices[ticker]);
+        });
+      }
+
+      save();
+      const el = document.getElementById('merge-status');
+      if (el) { el.textContent = `✅ 병합 완료 — 거래 ${added}건 추가됨`; el.style.color = 'var(--accent)'; }
+      e.target.value = '';
+    } catch(err) {
+      alert('❌ 파일을 읽을 수 없습니다: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+
 function destroyChart(id) {
   if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
 }
