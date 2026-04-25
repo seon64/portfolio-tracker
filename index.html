@@ -332,6 +332,9 @@
       <div class="nav-item" onclick="showPage('history')">
         <span class="icon">📋</span> 거래 내역
       </div>
+      <div class="nav-item" onclick="showPage('dividend')">
+        <span class="icon">💰</span> 배당금 관리
+      </div>
       <div class="nav-item" onclick="showPage('sync')">
         <span class="icon">🔄</span> 기기 동기화
       </div>
@@ -616,6 +619,85 @@
       </div>
     </div>
 
+    <!-- ===== DIVIDEND ===== -->
+    <div id="page-dividend" class="page">
+      <div class="page-header">
+        <div class="page-title">배당금 관리</div>
+        <div class="page-sub">수령한 배당금을 입력하고 흐름을 확인하세요</div>
+      </div>
+
+      <!-- 입력 폼 -->
+      <div class="card mb-20">
+        <div class="card-title">배당금 입력</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">날짜</label>
+            <input type="date" id="div-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">계좌</label>
+            <select id="div-account"><option value="">계좌 선택</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">종목 선택</label>
+            <select id="div-stock-select" onchange="onDivStockSelect(this.value)">
+              <option value="">— 종목 선택 —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">티커 <span style="color:var(--text-muted);font-size:10px">(직접입력)</span></label>
+            <input type="text" id="div-ticker" placeholder="예: AAPL">
+          </div>
+          <div class="form-group">
+            <label class="form-label">수량 (주)</label>
+            <input type="number" id="div-qty" placeholder="0" oninput="calcDivTotal()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">주당 배당금</label>
+            <input type="number" id="div-per-share" placeholder="0" oninput="calcDivTotal()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">총 배당금 (자동계산)</label>
+            <input type="number" id="div-total" placeholder="0" style="background:var(--surface2);color:var(--accent);font-weight:700" readonly>
+          </div>
+          <div class="form-group" style="align-self:end">
+            <button class="btn btn-primary w-full" onclick="addDividend()">+ 추가</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 요약 스탯 -->
+      <div class="grid-4 mb-20" id="div-stats"></div>
+
+      <!-- 차트 -->
+      <div class="grid-2 mb-20">
+        <div class="card">
+          <div class="card-title">월별 배당금</div>
+          <div class="filter-row" style="margin-bottom:12px">
+            <select id="div-year-filter" style="width:100px" onchange="renderDividendCharts()">
+              <option value="all">전체</option>
+            </select>
+          </div>
+          <div class="chart-wrap"><canvas id="chart-div-monthly"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">종목별 배당금 비중</div>
+          <div class="chart-wrap"><canvas id="chart-div-ticker"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card mb-20">
+        <div class="card-title">연도별 배당금 합계</div>
+        <div class="chart-wrap"><canvas id="chart-div-yearly"></canvas></div>
+      </div>
+
+      <!-- 내역 테이블 -->
+      <div class="card">
+        <div class="card-title">배당금 내역</div>
+        <div class="table-wrap" id="div-history"></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -651,6 +733,7 @@ let data = JSON.parse(localStorage.getItem('folio_data') || 'null') || {
   trades: [],
   prices: {},   // { ticker: { date: price } }
   stocks: [],   // { ticker, name, category } master list
+  dividends: [], // { id, date, accId, ticker, qty, perShare, total }
 };
 let selectedAccColor = COLORS[0];
 let editAccColor = COLORS[0];
@@ -668,7 +751,7 @@ function showPage(p) {
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.getElementById('page-' + p).classList.add('active');
   const navItems = document.querySelectorAll('.nav-item');
-  const pages = ['dashboard','trade','accounts','analyze','profit','history','sync'];
+  const pages = ['dashboard','trade','accounts','analyze','profit','history','dividend','sync'];
   navItems[pages.indexOf(p)].classList.add('active');
   setTimeout(() => {
     if (p === 'dashboard') renderDashboard();
@@ -677,6 +760,7 @@ function showPage(p) {
     if (p === 'analyze') renderAnalyze();
     if (p === 'profit') renderProfit();
     if (p === 'history') renderHistory();
+    if (p === 'dividend') renderDividendPage();
   }, 50);
 }
 
@@ -1374,6 +1458,12 @@ function mergeData(e) {
         });
       }
 
+      // Merge dividends
+      if (imported.dividends) {
+        const existingDivIds = new Set((data.dividends||[]).map(d => d.id));
+        imported.dividends.forEach(d => { if (!existingDivIds.has(d.id)) data.dividends.push(d); });
+      }
+
       save();
       const el = document.getElementById('merge-status');
       if (el) { el.textContent = `✅ 병합 완료 — 거래 ${added}건 추가됨`; el.style.color = 'var(--accent)'; }
@@ -1386,13 +1476,259 @@ function mergeData(e) {
 }
 
 
-function destroyChart(id) {
+// ==================== DIVIDEND ====================
+function renderDividendPage() {
+  if (!data.dividends) data.dividends = [];
+
+  // Populate account select
+  const accSel = document.getElementById('div-account');
+  if (accSel) {
+    accSel.innerHTML = '<option value="">계좌 선택</option>' +
+      data.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  }
+
+  // Populate stock select
+  refreshStockMaster();
+  const stockSel = document.getElementById('div-stock-select');
+  if (stockSel) {
+    stockSel.innerHTML = '<option value="">— 종목 선택 —</option>' +
+      data.stocks.map(s => `<option value="${s.ticker}">[${s.ticker}] ${s.name}</option>`).join('');
+  }
+
+  // Year filter
+  const years = [...new Set(data.dividends.map(d => d.date.slice(0,4)))].sort().reverse();
+  const yearSel = document.getElementById('div-year-filter');
+  if (yearSel) {
+    const cur = yearSel.value;
+    yearSel.innerHTML = '<option value="all">전체</option>' +
+      years.map(y => `<option value="${y}" ${cur===y?'selected':''}>${y}년</option>`).join('');
+  }
+
+  // Set today
+  const divDate = document.getElementById('div-date');
+  if (divDate && !divDate.value) divDate.value = new Date().toISOString().slice(0,10);
+
+  renderDivStats();
+  renderDividendCharts();
+  renderDivHistory();
+}
+
+function onDivStockSelect(ticker) {
+  if (!ticker) return;
+  document.getElementById('div-ticker').value = ticker;
+  // Auto-fill qty from current holdings
+  const holdings = getHoldings();
+  const h = holdings.find(x => x.ticker === ticker);
+  if (h) document.getElementById('div-qty').value = h.qty;
+  calcDivTotal();
+}
+
+function calcDivTotal() {
+  const qty = parseFloat(document.getElementById('div-qty').value) || 0;
+  const per = parseFloat(document.getElementById('div-per-share').value) || 0;
+  document.getElementById('div-total').value = (qty * per).toFixed(0);
+}
+
+function addDividend() {
+  const date = document.getElementById('div-date').value;
+  const accId = parseInt(document.getElementById('div-account').value);
+  const ticker = document.getElementById('div-ticker').value.trim().toUpperCase();
+  const qty = parseFloat(document.getElementById('div-qty').value);
+  const perShare = parseFloat(document.getElementById('div-per-share').value);
+
+  if (!date || !accId || !ticker || !qty || !perShare) return alert('모든 항목을 입력하세요.');
+
+  const total = qty * perShare;
+  data.dividends.push({ id: Date.now(), date, accId, ticker, qty, perShare, total });
+  save();
+
+  document.getElementById('div-qty').value = '';
+  document.getElementById('div-per-share').value = '';
+  document.getElementById('div-total').value = '';
+  document.getElementById('div-stock-select').value = '';
+  document.getElementById('div-ticker').value = '';
+
+  renderDividendPage();
+}
+
+function deleteDividend(id) {
+  data.dividends = data.dividends.filter(d => d.id !== id);
+  save();
+  renderDividendPage();
+}
+
+function renderDivStats() {
+  const divs = data.dividends || [];
+  const total = divs.reduce((s, d) => s + d.total, 0);
+  const thisYear = new Date().getFullYear().toString();
+  const yearTotal = divs.filter(d => d.date.startsWith(thisYear)).reduce((s, d) => s + d.total, 0);
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const monthTotal = divs.filter(d => d.date.startsWith(thisMonth)).reduce((s, d) => s + d.total, 0);
+  const tickers = [...new Set(divs.map(d => d.ticker))].length;
+
+  document.getElementById('div-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">누적 배당금</div>
+      <div class="stat-value pos">${Math.round(total).toLocaleString()}</div>
+      <div class="stat-sub">원 (전체)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">${thisYear}년 배당금</div>
+      <div class="stat-value pos">${Math.round(yearTotal).toLocaleString()}</div>
+      <div class="stat-sub">원</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">이번달 배당금</div>
+      <div class="stat-value pos">${Math.round(monthTotal).toLocaleString()}</div>
+      <div class="stat-sub">원</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">배당 종목 수</div>
+      <div class="stat-value">${tickers}</div>
+      <div class="stat-sub">개 종목</div>
+    </div>
+  `;
+}
+
+function renderDividendCharts() {
+  const divs = data.dividends || [];
+  const yearFilter = document.getElementById('div-year-filter')?.value || 'all';
+  const filtered = yearFilter === 'all' ? divs : divs.filter(d => d.date.startsWith(yearFilter));
+
+  // Monthly bar chart
+  const monthlyMap = {};
+  filtered.forEach(d => {
+    const m = d.date.slice(0, 7); // YYYY-MM
+    monthlyMap[m] = (monthlyMap[m] || 0) + d.total;
+  });
+  const monthLabels = Object.keys(monthlyMap).sort();
+  const monthValues = monthLabels.map(m => Math.round(monthlyMap[m]));
+
+  destroyChart('chart-div-monthly');
+  if (monthLabels.length) {
+    chartInstances['chart-div-monthly'] = new Chart(document.getElementById('chart-div-monthly'), {
+      type: 'bar',
+      data: {
+        labels: monthLabels,
+        datasets: [{
+          label: '배당금',
+          data: monthValues,
+          backgroundColor: 'rgba(0,229,180,0.3)',
+          borderColor: '#00e5b4',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8892a4' }, grid: { color: '#1e2530' } },
+          y: { ticks: { color: '#8892a4', callback: v => v.toLocaleString() }, grid: { color: '#1e2530' } }
+        }
+      }
+    });
+  }
+
+  // Ticker pie chart
+  const tickerMap = {};
+  filtered.forEach(d => { tickerMap[d.ticker] = (tickerMap[d.ticker] || 0) + d.total; });
+  const tickerLabels = Object.keys(tickerMap);
+  const tickerValues = tickerLabels.map(t => Math.round(tickerMap[t]));
+
+  destroyChart('chart-div-ticker');
+  if (tickerLabels.length) {
+    chartInstances['chart-div-ticker'] = new Chart(document.getElementById('chart-div-ticker'), {
+      type: 'doughnut',
+      data: {
+        labels: tickerLabels,
+        datasets: [{ data: tickerValues, backgroundColor: COLORS, borderWidth: 2, borderColor: '#111318' }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#8892a4' } } }
+      }
+    });
+  }
+
+  // Yearly bar chart
+  const yearlyMap = {};
+  divs.forEach(d => {
+    const y = d.date.slice(0, 4);
+    yearlyMap[y] = (yearlyMap[y] || 0) + d.total;
+  });
+  const yearLabels = Object.keys(yearlyMap).sort();
+  const yearValues = yearLabels.map(y => Math.round(yearlyMap[y]));
+
+  destroyChart('chart-div-yearly');
+  if (yearLabels.length) {
+    chartInstances['chart-div-yearly'] = new Chart(document.getElementById('chart-div-yearly'), {
+      type: 'bar',
+      data: {
+        labels: yearLabels,
+        datasets: [{
+          label: '연간 배당금',
+          data: yearValues,
+          backgroundColor: 'rgba(108,99,255,0.3)',
+          borderColor: '#6c63ff',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8892a4' }, grid: { color: '#1e2530' } },
+          y: { ticks: { color: '#8892a4', callback: v => v.toLocaleString() }, grid: { color: '#1e2530' } }
+        }
+      }
+    });
+  }
+}
+
+function renderDivHistory() {
+  const el = document.getElementById('div-history');
+  const divs = [...(data.dividends || [])].sort((a,b) => b.date.localeCompare(a.date));
+  if (!divs.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💰</div>배당금 내역이 없습니다.</div>';
+    return;
+  }
+  const stock = (ticker) => data.stocks.find(s => s.ticker === ticker);
+  el.innerHTML = `<table>
+    <thead><tr>
+      <th>날짜</th><th>계좌</th><th>티커</th><th>종목명</th><th>수량</th><th>주당배당금</th><th>총 배당금</th><th></th>
+    </tr></thead>
+    <tbody>
+    ${divs.map(d => {
+      const acc = data.accounts.find(a => a.id === d.accId);
+      const s = stock(d.ticker);
+      return `<tr>
+        <td>${d.date}</td>
+        <td><span style="display:inline-flex;align-items:center;gap:5px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${acc?.color||'#888'}"></span>
+          ${acc?.name||'삭제된계좌'}
+        </span></td>
+        <td><b>${d.ticker}</b></td>
+        <td style="color:var(--text-dim)">${s?.name || '-'}</td>
+        <td>${d.qty.toLocaleString()}</td>
+        <td>${d.perShare.toLocaleString()}</td>
+        <td><b style="color:var(--accent)">+${Math.round(d.total).toLocaleString()}</b></td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteDividend(${d.id})">삭제</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+}
+
+
   if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
 }
 
 // ==================== INIT ====================
 function init() {
   if (!data.stocks) data.stocks = [];
+  if (!data.dividends) data.dividends = [];
   refreshStockMaster();
   const today = new Date().toISOString().slice(0,10);
   const tDate = document.getElementById('t-date');
