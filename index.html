@@ -335,6 +335,9 @@
       <div class="nav-item" onclick="showPage('dividend')">
         <span class="icon">💰</span> 배당금 관리
       </div>
+      <div class="nav-item" onclick="showPage('realized')">
+        <span class="icon">💵</span> 수익 실현
+      </div>
       <div class="nav-item" onclick="showPage('sync')">
         <span class="icon">🔄</span> 기기 동기화
       </div>
@@ -499,7 +502,11 @@
       <div class="card">
         <div class="card-title">수익 흐름 그래프</div>
         <div class="filter-row">
-          <select id="profit-ticker-select" style="width:180px" onchange="renderProfitChart()">
+          <select id="profit-view-type" style="width:130px" onchange="onProfitViewTypeChange()">
+            <option value="ticker">종목별</option>
+            <option value="category">분류별</option>
+          </select>
+          <select id="profit-ticker-select" style="width:200px" onchange="renderProfitChart()">
             <option value="all">전체 포트폴리오</option>
           </select>
           <select id="profit-period" style="width:120px" onchange="renderProfitChart()">
@@ -513,7 +520,99 @@
       </div>
     </div>
 
-    <!-- ===== HISTORY ===== -->
+    <!-- ===== REALIZED PROFIT ===== -->
+    <div id="page-realized" class="page">
+      <div class="page-header">
+        <div class="page-title">수익 실현</div>
+        <div class="page-sub">매도를 통해 현금화한 수익을 기록합니다</div>
+      </div>
+
+      <!-- 입력 -->
+      <div class="card mb-20">
+        <div class="card-title">수익 실현 입력</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">날짜</label>
+            <input type="date" id="real-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">계좌</label>
+            <select id="real-account"><option value="">계좌 선택</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">종목 선택</label>
+            <select id="real-stock-select" onchange="onRealStockSelect(this.value)">
+              <option value="">— 선택 또는 직접 입력 —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">티커</label>
+            <input type="text" id="real-ticker" placeholder="예: AAPL">
+          </div>
+          <div class="form-group">
+            <label class="form-label">종목명</label>
+            <input type="text" id="real-name" placeholder="예: 애플">
+          </div>
+          <div class="form-group">
+            <label class="form-label">매도 수량</label>
+            <input type="number" id="real-qty" placeholder="0" oninput="calcRealProfit()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">평균 매수가</label>
+            <input type="number" id="real-buy-price" placeholder="0" oninput="calcRealProfit()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">매도가</label>
+            <input type="number" id="real-sell-price" placeholder="0" oninput="calcRealProfit()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">실현 수익 (자동)</label>
+            <input type="number" id="real-profit" placeholder="자동계산" style="font-weight:700" readonly id="real-profit">
+          </div>
+          <div class="form-group">
+            <label class="form-label">수익률 (자동)</label>
+            <input type="text" id="real-pct" placeholder="자동계산" style="font-weight:700" readonly>
+          </div>
+          <div class="form-group" style="align-self:end">
+            <button class="btn btn-primary w-full" onclick="addRealized()">+ 추가</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 통계 카드 -->
+      <div class="grid-4 mb-20" id="real-stats"></div>
+
+      <!-- 차트 -->
+      <div class="grid-2 mb-20">
+        <div class="card">
+          <div class="card-title">월별 실현 수익</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <select id="real-year-filter" style="width:100px" onchange="renderRealizedCharts()">
+              <option value="all">전체</option>
+            </select>
+          </div>
+          <div class="chart-wrap"><canvas id="chart-real-monthly"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">종목별 실현 수익 비중</div>
+          <div class="chart-wrap"><canvas id="chart-real-ticker"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 내역 테이블 -->
+      <div class="card">
+        <div class="card-title">수익 실현 내역</div>
+        <div class="filter-row mb-16">
+          <select id="real-filter-account" style="width:150px" onchange="renderRealizedTable()">
+            <option value="">전체 계좌</option>
+          </select>
+          <select id="real-filter-ticker" style="width:150px" onchange="renderRealizedTable()">
+            <option value="">전체 종목</option>
+          </select>
+        </div>
+        <div class="table-wrap" id="real-table"></div>
+      </div>
+    </div>
     <div id="page-history" class="page">
       <div class="page-header">
         <div class="page-title">거래 내역</div>
@@ -758,7 +857,7 @@ function showPage(p) {
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.getElementById('page-' + p).classList.add('active');
   const navItems = document.querySelectorAll('.nav-item');
-  const pages = ['dashboard','trade','accounts','analyze','profit','history','dividend','sync'];
+  const pages = ['dashboard','trade','accounts','analyze','profit','history','dividend','realized','sync'];
   navItems[pages.indexOf(p)].classList.add('active');
   setTimeout(() => {
     if (p === 'dashboard') renderDashboard();
@@ -768,6 +867,7 @@ function showPage(p) {
     if (p === 'profit') renderProfit();
     if (p === 'history') renderHistory();
     if (p === 'dividend') renderDividend();
+    if (p === 'realized') renderRealized();
   }, 50);
 }
 
@@ -1234,15 +1334,28 @@ function renderProfit() {
 }
 
 function updateProfitSelects() {
+  const viewType = document.getElementById('profit-view-type')?.value || 'ticker';
   const holdings = getHoldings();
   const sel = document.getElementById('profit-ticker-select');
   if (!sel) return;
   const cur = sel.value;
-  sel.innerHTML = '<option value="all">전체 포트폴리오</option>' +
-    holdings.map(h => {
-      const label = h.name && h.name !== h.ticker ? `${h.name} (${h.ticker})` : h.ticker;
-      return `<option value="${h.ticker}" ${cur===h.ticker?'selected':''}>${label}</option>`;
-    }).join('');
+
+  if (viewType === 'ticker') {
+    sel.innerHTML = '<option value="all">전체 포트폴리오</option>' +
+      holdings.map(h => {
+        const label = h.name && h.name !== h.ticker ? `${h.name} (${h.ticker})` : h.ticker;
+        return `<option value="${h.ticker}" ${cur===h.ticker?'selected':''}>${label}</option>`;
+      }).join('');
+  } else {
+    const cats = [...new Set(holdings.map(h => h.category))];
+    sel.innerHTML = '<option value="all">전체 포트폴리오</option>' +
+      cats.map(c => `<option value="cat:${c}" ${cur==='cat:'+c?'selected':''}>${c}</option>`).join('');
+  }
+}
+
+function onProfitViewTypeChange() {
+  updateProfitSelects();
+  renderProfitChart();
 }
 
 function renderPriceInputArea() {
@@ -1293,7 +1406,7 @@ function savePrices() {
 }
 
 function renderProfitChart() {
-  const ticker = document.getElementById('profit-ticker-select')?.value || 'all';
+  const selected = document.getElementById('profit-ticker-select')?.value || 'all';
   const period = document.getElementById('profit-period')?.value || '30';
   const holdings = getHoldings();
 
@@ -1318,58 +1431,59 @@ function renderProfitChart() {
   }
 
   let datasets = [];
-  let labels = allDates;
 
-  if (ticker === 'all') {
-    // Portfolio total profit %
+  if (selected === 'all') {
+    // 전체 포트폴리오
     const portValues = allDates.map(date => {
       let totalCost = 0, totalMarket = 0;
       holdings.forEach(h => {
         const pd = data.prices[h.ticker] || {};
         const availDates = Object.keys(pd).filter(d => d <= date).sort();
         const price = availDates.length ? pd[availDates[availDates.length-1]] : null;
-        if (price) {
-          totalCost += h.cost;
-          totalMarket += price * h.qty;
-        }
+        if (price) { totalCost += h.cost; totalMarket += price * h.qty; }
       });
       return totalCost ? ((totalMarket - totalCost) / totalCost * 100) : null;
     });
-    datasets = [{
-      label: '포트폴리오 수익률 (%)',
-      data: portValues,
-      borderColor: '#00e5b4',
-      backgroundColor: 'rgba(0,229,180,0.08)',
-      tension: 0.3, fill: true, spanGaps: true, pointRadius: 3
-    }];
+    datasets = [{ label: '포트폴리오 수익률 (%)', data: portValues, borderColor: '#00e5b4', backgroundColor: 'rgba(0,229,180,0.08)', tension: 0.3, fill: true, spanGaps: true, pointRadius: 3 }];
+
+  } else if (selected.startsWith('cat:')) {
+    // 분류별 — 해당 분류의 종목들을 합산
+    const cat = selected.slice(4);
+    const catHoldings = holdings.filter(h => h.category === cat);
+    const values = allDates.map(date => {
+      let totalCost = 0, totalMarket = 0;
+      catHoldings.forEach(h => {
+        const pd = data.prices[h.ticker] || {};
+        const availDates = Object.keys(pd).filter(d => d <= date).sort();
+        const price = availDates.length ? pd[availDates[availDates.length-1]] : null;
+        if (price) { totalCost += h.cost; totalMarket += price * h.qty; }
+      });
+      return totalCost ? ((totalMarket - totalCost) / totalCost * 100) : null;
+    });
+    datasets = [{ label: `${cat} 수익률 (%)`, data: values, borderColor: '#ffd93d', backgroundColor: 'rgba(255,217,61,0.08)', tension: 0.3, fill: true, spanGaps: true, pointRadius: 3 }];
+
   } else {
-    // Single ticker profit %
-    const h = holdings.find(x => x.ticker === ticker);
+    // 개별 종목
+    const h = holdings.find(x => x.ticker === selected);
     if (!h) return;
     const avgPrice = h.cost / h.qty;
     const stockLabel = h.name && h.name !== h.ticker ? `${h.name} (${h.ticker})` : h.ticker;
     const values = allDates.map(date => {
-      const pd = data.prices[ticker] || {};
+      const pd = data.prices[selected] || {};
       const availDates = Object.keys(pd).filter(d => d <= date).sort();
       const price = availDates.length ? pd[availDates[availDates.length-1]] : null;
       return price ? ((price - avgPrice) / avgPrice * 100) : null;
     });
-    datasets = [{
-      label: `${stockLabel} 수익률 (%)`,
-      data: values,
-      borderColor: '#6c63ff',
-      backgroundColor: 'rgba(108,99,255,0.08)',
-      tension: 0.3, fill: true, spanGaps: true, pointRadius: 3
-    }];
+    datasets = [{ label: `${stockLabel} 수익률 (%)`, data: values, borderColor: '#6c63ff', backgroundColor: 'rgba(108,99,255,0.08)', tension: 0.3, fill: true, spanGaps: true, pointRadius: 3 }];
   }
 
   destroyChart('chart-profit');
   chartInstances['chart-profit'] = new Chart(document.getElementById('chart-profit'), {
     type: 'line',
-    data: { labels, datasets },
+    data: { labels: allDates, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#8892a4' } } },
+      plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } },
       scales: {
         x: { ticks: { color: '#8892a4', maxTicksLimit: 12 }, grid: { color: '#1e2530' } },
         y: {
@@ -1475,6 +1589,13 @@ function mergeData(e) {
         if (!data.dividends) data.dividends = [];
         const existingDivIds = new Set(data.dividends.map(d => d.id));
         imported.dividends.forEach(d => { if (!existingDivIds.has(d.id)) data.dividends.push(d); });
+      }
+
+      // Merge realized
+      if (imported.realized) {
+        if (!data.realized) data.realized = [];
+        const existingRealIds = new Set(data.realized.map(r => r.id));
+        imported.realized.forEach(r => { if (!existingRealIds.has(r.id)) data.realized.push(r); });
       }
 
       save();
@@ -1709,6 +1830,246 @@ function renderDividendTable() {
 }
 
 
+// ==================== REALIZED PROFIT ====================
+function renderRealized() {
+  if (!data.realized) data.realized = [];
+
+  const accSel = document.getElementById('real-account');
+  accSel.innerHTML = '<option value="">계좌 선택</option>' +
+    data.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
+  const stockSel = document.getElementById('real-stock-select');
+  stockSel.innerHTML = '<option value="">— 선택 또는 직접 입력 —</option>' +
+    data.stocks.map(s => `<option value="${s.ticker}">[${s.ticker}] ${s.name}</option>`).join('');
+
+  const today = new Date().toISOString().slice(0,10);
+  const realDate = document.getElementById('real-date');
+  if (realDate && !realDate.value) realDate.value = today;
+
+  renderRealizedStats();
+  renderRealizedCharts();
+  renderRealizedTable();
+}
+
+function onRealStockSelect(ticker) {
+  if (!ticker) return;
+  const stock = data.stocks.find(s => s.ticker === ticker);
+  if (!stock) return;
+  document.getElementById('real-ticker').value = stock.ticker;
+  document.getElementById('real-name').value = stock.name;
+  // Auto-fill avg buy price from holdings
+  const holdings = getHoldings();
+  const h = holdings.find(x => x.ticker === ticker);
+  if (h) document.getElementById('real-buy-price').value = (h.cost / h.qty).toFixed(0);
+  calcRealProfit();
+}
+
+function calcRealProfit() {
+  const qty = parseFloat(document.getElementById('real-qty').value) || 0;
+  const buyPrice = parseFloat(document.getElementById('real-buy-price').value) || 0;
+  const sellPrice = parseFloat(document.getElementById('real-sell-price').value) || 0;
+  const profit = (sellPrice - buyPrice) * qty;
+  const pct = buyPrice ? ((sellPrice - buyPrice) / buyPrice * 100) : 0;
+  const profitEl = document.getElementById('real-profit');
+  const pctEl = document.getElementById('real-pct');
+  if (profitEl) {
+    profitEl.value = qty && buyPrice && sellPrice ? profit.toFixed(0) : '';
+    profitEl.style.color = profit >= 0 ? 'var(--accent)' : 'var(--accent2)';
+  }
+  if (pctEl) {
+    pctEl.value = qty && buyPrice && sellPrice ? (pct.toFixed(2) + '%') : '';
+    pctEl.style.color = pct >= 0 ? 'var(--accent)' : 'var(--accent2)';
+  }
+}
+
+function addRealized() {
+  const date = document.getElementById('real-date').value;
+  const accId = parseInt(document.getElementById('real-account').value);
+  const ticker = document.getElementById('real-ticker').value.trim().toUpperCase();
+  const name = document.getElementById('real-name').value.trim() || ticker;
+  const qty = parseFloat(document.getElementById('real-qty').value);
+  const buyPrice = parseFloat(document.getElementById('real-buy-price').value);
+  const sellPrice = parseFloat(document.getElementById('real-sell-price').value);
+
+  if (!date || !accId || !ticker || !qty || !buyPrice || !sellPrice) return alert('모든 항목을 입력하세요.');
+
+  const profit = (sellPrice - buyPrice) * qty;
+  const pct = ((sellPrice - buyPrice) / buyPrice * 100);
+
+  if (!data.realized) data.realized = [];
+  data.realized.push({ id: Date.now(), date, accId, ticker, name, qty, buyPrice, sellPrice, profit, pct });
+
+  if (!data.stocks.find(s => s.ticker === ticker)) {
+    data.stocks.push({ ticker, name, category: '매도' });
+  }
+
+  save();
+  document.getElementById('real-qty').value = '';
+  document.getElementById('real-buy-price').value = '';
+  document.getElementById('real-sell-price').value = '';
+  document.getElementById('real-profit').value = '';
+  document.getElementById('real-pct').value = '';
+  document.getElementById('real-stock-select').value = '';
+  renderRealized();
+}
+
+function deleteRealized(id) {
+  data.realized = data.realized.filter(r => r.id !== id);
+  save();
+  renderRealized();
+}
+
+function renderRealizedStats() {
+  const reals = data.realized || [];
+  const total = reals.reduce((s, r) => s + r.profit, 0);
+  const thisYear = new Date().getFullYear();
+  const yearTotal = reals.filter(r => r.date.startsWith(thisYear)).reduce((s, r) => s + r.profit, 0);
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const monthTotal = reals.filter(r => r.date.startsWith(thisMonth)).reduce((s, r) => s + r.profit, 0);
+  const count = reals.length;
+
+  document.getElementById('real-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">누적 실현 수익</div>
+      <div class="stat-value ${total>=0?'pos':'neg'}">${total>=0?'+':''}${Math.round(total).toLocaleString()}</div>
+      <div class="stat-sub">원 전체</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">${thisYear}년 실현 수익</div>
+      <div class="stat-value ${yearTotal>=0?'pos':'neg'}">${yearTotal>=0?'+':''}${Math.round(yearTotal).toLocaleString()}</div>
+      <div class="stat-sub">원</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">이번달 실현 수익</div>
+      <div class="stat-value ${monthTotal>=0?'pos':'neg'}">${monthTotal>=0?'+':''}${Math.round(monthTotal).toLocaleString()}</div>
+      <div class="stat-sub">원</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">총 매도 횟수</div>
+      <div class="stat-value">${count}</div>
+      <div class="stat-sub">건</div>
+    </div>
+  `;
+}
+
+function renderRealizedCharts() {
+  const reals = data.realized || [];
+  const yearFilter = document.getElementById('real-year-filter')?.value || 'all';
+
+  const years = [...new Set(reals.map(r => r.date.slice(0,4)))].sort().reverse();
+  const yrSel = document.getElementById('real-year-filter');
+  const curYr = yrSel.value;
+  yrSel.innerHTML = '<option value="all">전체</option>' + years.map(y => `<option value="${y}" ${curYr===y?'selected':''}>${y}년</option>`).join('');
+
+  const filtered = yearFilter === 'all' ? reals : reals.filter(r => r.date.startsWith(yearFilter));
+
+  // Monthly bar
+  const monthMap = {};
+  filtered.forEach(r => {
+    const m = r.date.slice(0,7);
+    monthMap[m] = (monthMap[m] || 0) + r.profit;
+  });
+  const months = Object.keys(monthMap).sort();
+
+  destroyChart('chart-real-monthly');
+  if (months.length) {
+    chartInstances['chart-real-monthly'] = new Chart(document.getElementById('chart-real-monthly'), {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [{
+          label: '실현 수익',
+          data: months.map(m => Math.round(monthMap[m])),
+          backgroundColor: months.map(m => monthMap[m] >= 0 ? 'rgba(0,229,180,0.3)' : 'rgba(255,78,106,0.3)'),
+          borderColor: months.map(m => monthMap[m] >= 0 ? '#00e5b4' : '#ff4e6a'),
+          borderWidth: 1, borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8892a4' }, grid: { color: '#1e2530' } },
+          y: { ticks: { color: '#8892a4', callback: v => v.toLocaleString() }, grid: { color: '#1e2530' } }
+        }
+      }
+    });
+  }
+
+  // Ticker pie
+  const tickerMap = {};
+  filtered.forEach(r => {
+    const key = r.name && r.name !== r.ticker ? r.name : r.ticker;
+    tickerMap[key] = (tickerMap[key] || 0) + r.profit;
+  });
+  const tickerKeys = Object.keys(tickerMap).filter(k => tickerMap[k] > 0);
+
+  destroyChart('chart-real-ticker');
+  if (tickerKeys.length) {
+    chartInstances['chart-real-ticker'] = new Chart(document.getElementById('chart-real-ticker'), {
+      type: 'doughnut',
+      data: {
+        labels: tickerKeys,
+        datasets: [{ data: tickerKeys.map(k => Math.round(tickerMap[k])), backgroundColor: COLORS, borderWidth: 2, borderColor: '#111318' }]
+      },
+      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
+    });
+  }
+}
+
+function renderRealizedTable() {
+  const reals = data.realized || [];
+
+  const accSel = document.getElementById('real-filter-account');
+  const tickSel = document.getElementById('real-filter-ticker');
+  const curAcc = accSel.value;
+  const curTick = tickSel.value;
+
+  accSel.innerHTML = '<option value="">전체 계좌</option>' +
+    data.accounts.map(a => `<option value="${a.id}" ${curAcc==a.id?'selected':''}>${a.name}</option>`).join('');
+  const tickers = [...new Set(reals.map(r => r.ticker))].sort();
+  tickSel.innerHTML = '<option value="">전체 종목</option>' +
+    tickers.map(t => {
+      const r = reals.find(x => x.ticker === t);
+      const label = r?.name && r.name !== t ? `${r.name} (${t})` : t;
+      return `<option value="${t}" ${curTick===t?'selected':''}>${label}</option>`;
+    }).join('');
+
+  let filtered = [...reals].sort((a,b) => b.date.localeCompare(a.date));
+  if (curAcc) filtered = filtered.filter(r => r.accId == curAcc);
+  if (curTick) filtered = filtered.filter(r => r.ticker === curTick);
+
+  const el = document.getElementById('real-table');
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💵</div>수익 실현 내역이 없습니다.</div>';
+    return;
+  }
+  el.innerHTML = `<table>
+    <thead><tr><th>날짜</th><th>계좌</th><th>티커</th><th>종목명</th><th>수량</th><th>매수가</th><th>매도가</th><th>실현 수익</th><th>수익률</th><th></th></tr></thead>
+    <tbody>
+    ${filtered.map(r => {
+      const acc = data.accounts.find(a => a.id === r.accId);
+      return `<tr>
+        <td>${r.date}</td>
+        <td><span style="display:inline-flex;align-items:center;gap:5px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${acc?.color||'#888'}"></span>
+          ${acc?.name||'삭제된계좌'}
+        </span></td>
+        <td><b>${r.ticker}</b></td>
+        <td style="color:var(--text-dim)">${r.name||'-'}</td>
+        <td>${r.qty.toLocaleString()}</td>
+        <td>${Math.round(r.buyPrice).toLocaleString()}</td>
+        <td>${Math.round(r.sellPrice).toLocaleString()}</td>
+        <td class="${r.profit>=0?'pos':'neg'}"><b>${r.profit>=0?'+':''}${Math.round(r.profit).toLocaleString()}</b></td>
+        <td class="${r.pct>=0?'pos':'neg'}">${r.pct>=0?'+':''}${r.pct.toFixed(2)}%</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteRealized(${r.id})">삭제</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+}
+
+
 // ==================== UTILS ====================
 function destroyChart(id) {
   if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
@@ -1718,6 +2079,7 @@ function destroyChart(id) {
 function init() {
   if (!data.stocks) data.stocks = [];
   if (!data.dividends) data.dividends = [];
+  if (!data.realized) data.realized = [];
   refreshStockMaster();
   const today = new Date().toISOString().slice(0,10);
   const tDate = document.getElementById('t-date');
