@@ -32,19 +32,156 @@
     min-height: 100vh;
   }
 
-  /* LAYOUT */
+
+  /* ===== LAYOUT ===== */
   .app { display: flex; min-height: 100vh; }
 
+  /* SIDEBAR */
   .sidebar {
     width: 220px;
     background: var(--surface);
     border-right: 1px solid var(--border);
     padding: 24px 0;
     flex-shrink: 0;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
     height: 100vh;
     overflow-y: auto;
+    z-index: 200;
+    transition: transform .25s cubic-bezier(.4,0,.2,1), width .25s cubic-bezier(.4,0,.2,1);
+  }
+  .sidebar.collapsed { transform: translateX(-100%); }
+
+  /* OVERLAY for mobile */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 150;
+    backdrop-filter: blur(2px);
+  }
+  .sidebar-overlay.active { display: block; }
+
+  /* MAIN */
+  .main {
+    flex: 1;
+    overflow: auto;
+    padding: 32px;
+    margin-left: 220px;
+    transition: margin-left .25s cubic-bezier(.4,0,.2,1);
+    min-width: 0;
+  }
+  .main.expanded { margin-left: 0; }
+
+  /* Collapse button inside sidebar */
+  .sidebar-collapse-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 24px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+    transition: all .15s;
+    user-select: none;
+  }
+  .sidebar-collapse-btn:hover { color: var(--accent); background: var(--surface2); }
+
+  /* Mobile toggle button (hamburger) */
+  .sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 300;
+    width: 42px;
+    height: 42px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 20px;
+    transition: all .15s;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  }
+  .sidebar-toggle:hover { border-color: var(--accent); }
+
+  /* ===== DESKTOP COLLAPSED (icon-only) ===== */
+  @media (min-width: 769px) {
+    .sidebar.collapsed {
+      transform: none;
+      width: 58px;
+      overflow: visible;
+    }
+    .main.expanded { margin-left: 58px; }
+    .sidebar.collapsed .logo-text,
+    .sidebar.collapsed .logo sub,
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .collapse-label { display: none; }
+    .sidebar.collapsed .logo { font-size: 15px; padding: 0 10px 20px; letter-spacing: 1px; text-align: center; }
+    .sidebar.collapsed .nav-item { padding: 13px 0; justify-content: center; gap: 0; }
+    .sidebar.collapsed .nav-item .icon { font-size: 22px; }
+    .sidebar.collapsed .sidebar-collapse-btn { padding: 13px 0; justify-content: center; }
+    /* Tooltip */
+    .sidebar.collapsed .nav-item { position: relative; }
+    .sidebar.collapsed .nav-item::after {
+      content: attr(data-label);
+      position: absolute;
+      left: 62px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .15s;
+      font-weight: 600;
+    }
+    .sidebar.collapsed .nav-item:hover::after { opacity: 1; }
+  }
+
+  /* ===== MOBILE (iPhone) ===== */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); width: 240px; padding-top: 60px; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-toggle { display: flex; }
+    .main { margin-left: 0 !important; padding: 70px 16px 24px; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr !important; }
+    .form-grid { grid-template-columns: 1fr 1fr !important; }
+    .page-title { font-size: 26px; }
+    .stat-value { font-size: 24px; }
+    .card { padding: 16px; }
+    .chart-wrap { height: 220px; }
+    .chart-wrap-tall { height: 280px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 8px; }
+    .filter-row { gap: 6px; }
+    .filter-row select, .filter-row input { width: 100% !important; }
+    .tabs { overflow-x: auto; flex-wrap: nowrap; }
+    .sidebar-collapse-btn { display: none; }
+  }
+
+  /* ===== TABLET (iPad) ===== */
+  @media (min-width: 769px) and (max-width: 1100px) {
+    .sidebar { width: 200px; }
+    .main { margin-left: 200px; padding: 24px 20px; }
+    .main.expanded { margin-left: 58px; }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .chart-wrap { height: 240px; }
+    .stat-value { font-size: 26px; }
   }
 
   .logo {
@@ -72,8 +209,6 @@
   .nav-item:hover { color: var(--text); background: var(--surface2); }
   .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,229,180,.06); }
   .nav-item .icon { font-size: 16px; }
-
-  .main { flex: 1; overflow: auto; padding: 32px; }
 
   .page { display: none; }
   .page.active { display: block; }
@@ -308,39 +443,45 @@
 </style>
 </head>
 <body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+
 <div class="app">
 
   <!-- SIDEBAR -->
-  <nav class="sidebar">
-    <div class="logo">FOLIO<span>PORTFOLIO TRACKER</span></div>
+  <nav class="sidebar" id="sidebar">
+    <div class="logo">FOLIO<span class="nav-label">PORTFOLIO TRACKER</span></div>
     <div class="nav">
-      <div class="nav-item active" onclick="showPage('dashboard')">
-        <span class="icon">📊</span> 대시보드
+      <div class="nav-item active" data-label="대시보드" onclick="showPage('dashboard')">
+        <span class="icon">📊</span><span class="nav-label"> 대시보드</span>
       </div>
-      <div class="nav-item" onclick="showPage('trade')">
-        <span class="icon">📝</span> 거래 입력
+      <div class="nav-item" data-label="거래 입력" onclick="showPage('trade')">
+        <span class="icon">📝</span><span class="nav-label"> 거래 입력</span>
       </div>
-      <div class="nav-item" onclick="showPage('accounts')">
-        <span class="icon">🏦</span> 계좌 관리
+      <div class="nav-item" data-label="계좌 관리" onclick="showPage('accounts')">
+        <span class="icon">🏦</span><span class="nav-label"> 계좌 관리</span>
       </div>
-      <div class="nav-item" onclick="showPage('analyze')">
-        <span class="icon">📈</span> 분석
+      <div class="nav-item" data-label="분석" onclick="showPage('analyze')">
+        <span class="icon">📈</span><span class="nav-label"> 분석</span>
       </div>
-      <div class="nav-item" onclick="showPage('profit')">
-        <span class="icon">💹</span> 수익 추적
+      <div class="nav-item" data-label="수익 추적" onclick="showPage('profit')">
+        <span class="icon">💹</span><span class="nav-label"> 수익 추적</span>
       </div>
-      <div class="nav-item" onclick="showPage('history')">
-        <span class="icon">📋</span> 거래 내역
+      <div class="nav-item" data-label="거래 내역" onclick="showPage('history')">
+        <span class="icon">📋</span><span class="nav-label"> 거래 내역</span>
       </div>
-      <div class="nav-item" onclick="showPage('dividend')">
-        <span class="icon">💰</span> 배당금 관리
+      <div class="nav-item" data-label="배당금 관리" onclick="showPage('dividend')">
+        <span class="icon">💰</span><span class="nav-label"> 배당금 관리</span>
       </div>
-      <div class="nav-item" onclick="showPage('realized')">
-        <span class="icon">💵</span> 수익 실현
+      <div class="nav-item" data-label="수익 실현" onclick="showPage('realized')">
+        <span class="icon">💵</span><span class="nav-label"> 수익 실현</span>
       </div>
-      <div class="nav-item" onclick="showPage('sync')">
-        <span class="icon">🔄</span> 기기 동기화
+      <div class="nav-item" data-label="기기 동기화" onclick="showPage('sync')">
+        <span class="icon">🔄</span><span class="nav-label"> 기기 동기화</span>
       </div>
+    </div>
+    <div class="sidebar-collapse-btn" onclick="toggleSidebar()">
+      <span class="icon">◀</span><span class="collapse-label"> 접기</span>
     </div>
   </nav>
 
@@ -851,6 +992,37 @@ function save() {
   localStorage.setItem('folio_data', JSON.stringify(data));
 }
 
+// ==================== SIDEBAR TOGGLE ====================
+function isMobile() { return window.innerWidth <= 768; }
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const main = document.querySelector('.main');
+  const overlay = document.getElementById('sidebar-overlay');
+  const btn = document.querySelector('.sidebar-collapse-btn .icon');
+
+  if (isMobile()) {
+    // Mobile: slide in/out
+    const isOpen = sidebar.classList.contains('open');
+    sidebar.classList.toggle('open', !isOpen);
+    overlay.classList.toggle('active', !isOpen);
+  } else {
+    // Desktop: icon-only collapse
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    sidebar.classList.toggle('collapsed', !isCollapsed);
+    main.classList.toggle('expanded', !isCollapsed);
+    if (btn) btn.textContent = isCollapsed ? '◀' : '▶';
+    localStorage.setItem('sidebar_collapsed', !isCollapsed);
+  }
+}
+
+function closeSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.remove('open');
+  overlay.classList.remove('active');
+}
+
 // ==================== PAGE NAV ====================
 function showPage(p) {
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
@@ -859,6 +1031,8 @@ function showPage(p) {
   const navItems = document.querySelectorAll('.nav-item');
   const pages = ['dashboard','trade','accounts','analyze','profit','history','dividend','realized','sync'];
   navItems[pages.indexOf(p)].classList.add('active');
+  // Mobile: close sidebar after nav
+  if (isMobile()) closeSidebar();
   setTimeout(() => {
     if (p === 'dashboard') renderDashboard();
     if (p === 'trade') renderTradeForm();
@@ -2080,6 +2254,15 @@ function init() {
   if (!data.stocks) data.stocks = [];
   if (!data.dividends) data.dividends = [];
   if (!data.realized) data.realized = [];
+  // Restore sidebar collapsed state on desktop
+  if (!isMobile() && localStorage.getItem('sidebar_collapsed') === 'true') {
+    const sidebar = document.getElementById('sidebar');
+    const main = document.querySelector('.main');
+    const btn = document.querySelector('.sidebar-collapse-btn .icon');
+    sidebar.classList.add('collapsed');
+    main.classList.add('expanded');
+    if (btn) btn.textContent = '▶';
+  }
   refreshStockMaster();
   const today = new Date().toISOString().slice(0,10);
   const tDate = document.getElementById('t-date');
