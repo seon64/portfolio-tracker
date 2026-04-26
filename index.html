@@ -778,94 +778,82 @@
     <div id="page-sync" class="page">
       <div class="page-header">
         <div class="page-title">기기 동기화</div>
-        <div class="page-sub">구글 시트 실시간 동기화</div>
+        <div class="page-sub">iPhone ↔ iPad 데이터 옮기기 (AirDrop / iCloud)</div>
       </div>
 
-      <!-- GOOGLE SHEETS 설정 -->
-      <div class="card mb-20" style="border-color:rgba(0,229,180,.3)">
-        <div class="card-title">☁️ 구글 시트 연동 설정</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-          <span id="gs-status" style="font-size:13px;font-weight:700;color:var(--text-muted)">⚪ 미연결</span>
-          <span id="gs-last-sync" style="font-size:12px;color:var(--text-muted)"></span>
-        </div>
-        <div class="form-group mb-16">
-          <label class="form-label">Apps Script 웹 앱 URL</label>
-          <input type="password" id="gs-url-input" placeholder="https://script.google.com/macros/s/..." style="font-size:12px">
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">입력한 URL은 이 기기에만 저장되며 외부로 전송되지 않습니다</div>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="saveGsUrl()">🔗 URL 저장 및 연결</button>
-          <button class="btn btn-ghost" onclick="clearGsUrl()">연결 해제</button>
+      <!-- EXPORT -->
+      <div class="card mb-20">
+        <div class="card-title">📤 내보내기 — 이 기기에서 데이터 저장</div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
+          아래 버튼을 누르면 현재 모든 데이터(계좌·거래·종가)가 <b style="color:var(--text)">JSON 파일</b>로 저장됩니다.<br>
+          저장된 파일을 <b style="color:var(--accent)">AirDrop</b> 또는 <b style="color:var(--accent)">iCloud Drive</b>로 다른 기기에 전송하세요.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" onclick="exportData()">📤 데이터 내보내기 (.json)</button>
+          <span id="export-status" style="font-size:12px;color:var(--text-muted)"></span>
         </div>
         <div class="divider"></div>
         <div style="background:var(--surface2);border-radius:10px;padding:16px;font-size:12px;color:var(--text-dim);line-height:2">
-          <b style="color:var(--text);display:block;margin-bottom:6px">✨ 이렇게 작동해요</b>
-          URL을 저장하면 데이터 입력 시 <b style="color:var(--accent)">자동으로 구글 시트에 저장</b>됩니다.<br>
-          iPhone/iPad 양쪽에서 같은 URL을 입력하면 <b style="color:var(--accent)">항상 같은 데이터</b>를 볼 수 있어요.<br>
-          URL은 이 기기의 로컬스토리지에만 저장되고 코드에 노출되지 않아요.
+          <b style="color:var(--text);display:block;margin-bottom:6px">📱 전송 방법</b>
+          <b style="color:var(--accent)">AirDrop:</b> 파일 앱 → 저장된 JSON → 공유 → AirDrop → 상대 기기 선택<br>
+          <b style="color:var(--accent)">iCloud:</b> 파일 앱 → JSON을 iCloud Drive로 이동 → 다른 기기 파일 앱에서 열기
         </div>
       </div>
 
-      <!-- 수동 동기화 -->
+      <!-- IMPORT -->
       <div class="card mb-20">
-        <div class="card-title">🔄 수동 동기화</div>
+        <div class="card-title">📥 가져오기 — 다른 기기 데이터 불러오기</div>
         <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
-          연결된 구글 시트와 데이터를 수동으로 주고받을 수 있어요.
-        </p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="gsPush()">📤 구글 시트에 저장</button>
-          <button class="btn btn-ghost" onclick="gsPull()">📥 구글 시트에서 불러오기</button>
-        </div>
-        <div id="gs-manual-status" style="font-size:12px;color:var(--text-muted);margin-top:12px"></div>
-      </div>
-
-      <!-- 파일 백업 -->
-      <div class="card mb-20">
-        <div class="card-title">💾 파일 백업 (보조 수단)</div>
-        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
-          구글 시트 외에 JSON 파일로도 백업할 수 있어요.
+          다른 기기에서 내보낸 JSON 파일을 선택하면 데이터가 <b style="color:var(--accent2)">현재 기기에 덮어씌워집니다.</b><br>
+          가져오기 전에 현재 데이터를 먼저 내보내두는 것을 권장합니다.
         </p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-ghost" onclick="exportData()">📤 JSON 내보내기</button>
           <label class="btn btn-ghost" style="cursor:pointer">
-            📥 JSON 가져오기
+            📥 JSON 파일 선택
             <input type="file" accept=".json" id="import-file" style="display:none" onchange="importData(event)">
           </label>
+          <span id="import-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+      </div>
+
+      <!-- MERGE -->
+      <div class="card mb-20">
+        <div class="card-title">🔀 병합 가져오기 — 두 기기 데이터 합치기</div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
+          덮어쓰지 않고 <b style="color:var(--text)">기존 데이터에 추가</b>합니다. 중복 거래는 자동으로 제거됩니다.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <label class="btn btn-ghost" style="cursor:pointer">
-            🔀 JSON 병합
+            🔀 병합할 JSON 파일 선택
             <input type="file" accept=".json" id="merge-file" style="display:none" onchange="mergeData(event)">
           </label>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-          <span id="export-status" style="font-size:12px;color:var(--text-muted)"></span>
-          <span id="import-status" style="font-size:12px;color:var(--text-muted)"></span>
           <span id="merge-status" style="font-size:12px;color:var(--text-muted)"></span>
         </div>
       </div>
 
-      <!-- 사용 흐름 -->
+      <!-- GUIDE -->
       <div class="card">
         <div class="card-title">💡 권장 사용 흐름</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
           <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
             <div style="font-size:22px;margin-bottom:8px">1️⃣</div>
-            <div style="font-weight:700;margin-bottom:4px">URL 설정</div>
-            <div style="font-size:12px;color:var(--text-muted)">양쪽 기기에서 동기화 탭 → URL 입력</div>
+            <div style="font-weight:700;margin-bottom:4px">iPhone에서 입력</div>
+            <div style="font-size:12px;color:var(--text-muted)">거래 내역, 종가 등 데이터 입력</div>
           </div>
           <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
             <div style="font-size:22px;margin-bottom:8px">2️⃣</div>
-            <div style="font-weight:700;margin-bottom:4px">데이터 입력</div>
-            <div style="font-size:12px;color:var(--text-muted)">거래·배당금 입력 시 자동 저장</div>
+            <div style="font-weight:700;margin-bottom:4px">내보내기</div>
+            <div style="font-size:12px;color:var(--text-muted)">동기화 탭 → 데이터 내보내기</div>
           </div>
           <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
             <div style="font-size:22px;margin-bottom:8px">3️⃣</div>
-            <div style="font-weight:700;margin-bottom:4px">다른 기기에서 열기</div>
-            <div style="font-size:12px;color:var(--text-muted)">📥 불러오기 버튼으로 최신 데이터 반영</div>
+            <div style="font-weight:700;margin-bottom:4px">AirDrop 전송</div>
+            <div style="font-size:12px;color:var(--text-muted)">JSON 파일을 iPad로 AirDrop</div>
           </div>
           <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
             <div style="font-size:22px;margin-bottom:8px">4️⃣</div>
-            <div style="font-weight:700;margin-bottom:4px">완료!</div>
-            <div style="font-size:12px;color:var(--text-muted)">양쪽 기기가 항상 같은 데이터 유지</div>
+            <div style="font-weight:700;margin-bottom:4px">iPad에서 가져오기</div>
+            <div style="font-size:12px;color:var(--text-muted)">동기화 탭 → JSON 파일 선택</div>
           </div>
         </div>
       </div>
@@ -1002,7 +990,6 @@ let chartInstances = {};
 
 function save() {
   localStorage.setItem('folio_data', JSON.stringify(data));
-  saveToGs(); // 구글 시트 자동 저장
 }
 
 // ==================== SIDEBAR TOGGLE ====================
@@ -2257,113 +2244,6 @@ function renderRealizedTable() {
 }
 
 
-// ==================== GOOGLE SHEETS SYNC ====================
-function getGsUrl() {
-  return localStorage.getItem('gs_url') || '';
-}
-
-function saveGsUrl() {
-  const url = document.getElementById('gs-url-input').value.trim();
-  if (!url || !url.startsWith('https://script.google.com')) {
-    alert('올바른 Apps Script URL을 입력해주세요.');
-    return;
-  }
-  localStorage.setItem('gs_url', url);
-  updateGsStatus();
-  // 연결 즉시 최신 데이터 불러오기
-  gsPull();
-}
-
-function clearGsUrl() {
-  if (!confirm('구글 시트 연결을 해제할까요?')) return;
-  localStorage.removeItem('gs_url');
-  document.getElementById('gs-url-input').value = '';
-  updateGsStatus();
-}
-
-function updateGsStatus() {
-  const url = getGsUrl();
-  const statusEl = document.getElementById('gs-status');
-  const inputEl = document.getElementById('gs-url-input');
-  if (!statusEl) return;
-  if (url) {
-    statusEl.textContent = '🟢 연결됨';
-    statusEl.style.color = 'var(--accent)';
-    if (inputEl) inputEl.value = url;
-  } else {
-    statusEl.textContent = '⚪ 미연결';
-    statusEl.style.color = 'var(--text-muted)';
-  }
-}
-
-async function gsPush() {
-  const url = getGsUrl();
-  if (!url) { alert('먼저 동기화 탭에서 URL을 설정해주세요.'); return; }
-  const statusEl = document.getElementById('gs-manual-status') || document.getElementById('gs-last-sync');
-  try {
-    if (statusEl) { statusEl.textContent = '저장 중...'; statusEl.style.color = 'var(--text-muted)'; }
-    const res = await fetch(url, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'save', data }),
-    });
-    const result = await res.json();
-    if (result.ok) {
-      const time = new Date().toLocaleTimeString('ko-KR');
-      if (statusEl) { statusEl.textContent = `✅ 저장 완료 (${time})`; statusEl.style.color = 'var(--accent)'; }
-      const syncEl = document.getElementById('gs-last-sync');
-      if (syncEl) syncEl.textContent = `마지막 동기화: ${time}`;
-    } else {
-      throw new Error(result.error || '저장 실패');
-    }
-  } catch(e) {
-    if (statusEl) { statusEl.textContent = '❌ 저장 실패: ' + e.message; statusEl.style.color = 'var(--accent2)'; }
-  }
-}
-
-async function gsPull() {
-  const url = getGsUrl();
-  if (!url) { alert('먼저 동기화 탭에서 URL을 설정해주세요.'); return; }
-  const statusEl = document.getElementById('gs-manual-status') || document.getElementById('gs-last-sync');
-  try {
-    if (statusEl) { statusEl.textContent = '불러오는 중...'; statusEl.style.color = 'var(--text-muted)'; }
-    const res = await fetch(url + '?action=load');
-    const result = await res.json();
-    if (result.ok && result.data) {
-      data = result.data;
-      if (!data.stocks) data.stocks = [];
-      if (!data.dividends) data.dividends = [];
-      if (!data.realized) data.realized = [];
-      localStorage.setItem('folio_data', JSON.stringify(data));
-      refreshStockMaster();
-      renderDashboard();
-      const time = new Date().toLocaleTimeString('ko-KR');
-      if (statusEl) { statusEl.textContent = `✅ 불러오기 완료 (${time})`; statusEl.style.color = 'var(--accent)'; }
-      const syncEl = document.getElementById('gs-last-sync');
-      if (syncEl) syncEl.textContent = `마지막 동기화: ${time}`;
-    } else {
-      throw new Error(result.error || '데이터 없음');
-    }
-  } catch(e) {
-    if (statusEl) { statusEl.textContent = '❌ 불러오기 실패: ' + e.message; statusEl.style.color = 'var(--accent2)'; }
-  }
-}
-
-// save() 호출 시 구글 시트에도 자동 저장
-async function saveToGs() {
-  const url = getGsUrl();
-  if (!url) return;
-  try {
-    await fetch(url, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'save', data }),
-    });
-    const syncEl = document.getElementById('gs-last-sync');
-    if (syncEl) syncEl.textContent = `마지막 동기화: ${new Date().toLocaleTimeString('ko-KR')}`;
-  } catch(e) {
-    console.warn('구글 시트 자동 저장 실패:', e.message);
-  }
-}
-
 // ==================== UTILS ====================
 function destroyChart(id) {
   if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
@@ -2384,7 +2264,6 @@ function init() {
     if (btn) btn.textContent = '▶';
   }
   refreshStockMaster();
-  updateGsStatus();
   const today = new Date().toISOString().slice(0,10);
   const tDate = document.getElementById('t-date');
   if (tDate) tDate.value = today;
