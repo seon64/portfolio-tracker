@@ -538,8 +538,11 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">분류 <span style="color:var(--text-muted);font-size:10px">(직접입력)</span></label>
-            <input type="text" id="t-category" placeholder="예: 국내주식, ETF, 코인">
+            <label class="form-label">분류</label>
+            <select id="t-category-select" onchange="onCategorySelect(this.value)" style="margin-bottom:6px">
+              <option value="">— 기존 분류 선택 —</option>
+            </select>
+            <input type="text" id="t-category" placeholder="새 분류 직접 입력">
           </div>
           <div class="form-group">
             <label class="form-label">티커 <span style="color:var(--text-muted);font-size:10px">(직접입력)</span></label>
@@ -1135,7 +1138,15 @@ function renderTradeForm() {
   sel.innerHTML = '<option value="">계좌 선택</option>' +
     data.accounts.map(a => `<option value="${a.id}" ${cur == a.id ? 'selected' : ''}>${a.name}</option>`).join('');
 
-  // Stock select — all known stocks from master + trades
+  // Category dropdown — 기존 입력된 분류 목록
+  const catSel = document.getElementById('t-category-select');
+  if (catSel) {
+    const cats = [...new Set(data.trades.map(t => t.category).filter(Boolean))].sort();
+    catSel.innerHTML = '<option value="">— 기존 분류 선택 —</option>' +
+      cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+
+  // Stock select
   refreshStockMaster();
   const stockSel = document.getElementById('t-stock-select');
   if (stockSel) {
@@ -1143,6 +1154,12 @@ function renderTradeForm() {
       data.stocks.map(s => `<option value="${s.ticker}">[${s.ticker}] ${s.name} · ${s.category}</option>`).join('');
   }
   renderRecentTrades();
+}
+
+function onCategorySelect(val) {
+  if (!val) return;
+  document.getElementById('t-category').value = val;
+  // 드롭다운 선택 후 직접입력 칸으로 포커스 이동 안 함 — 그냥 값만 채움
 }
 
 function refreshStockMaster() {
@@ -1165,6 +1182,8 @@ function onStockSelect(ticker) {
   document.getElementById('t-ticker').value = stock.ticker;
   document.getElementById('t-name').value = stock.name;
   document.getElementById('t-category').value = stock.category;
+  const catSel = document.getElementById('t-category-select');
+  if (catSel) catSel.value = stock.category;
 }
 
 function addTrade() {
@@ -1410,7 +1429,7 @@ function renderAnalyzeAccount(el) {
   const byAcc = getHoldingsByAccount();
   if (!byAcc.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏦</div>거래 내역이 없습니다.</div>'; return; }
   el.innerHTML = `
-    <div class="grid-2">
+    <div class="grid-2 mb-20">
       <div class="card">
         <div class="card-title">계좌별 자산 비율</div>
         <div class="chart-wrap"><canvas id="analyze-acc-pie"></canvas></div>
@@ -1420,6 +1439,11 @@ function renderAnalyzeAccount(el) {
         <div class="chart-wrap"><canvas id="analyze-acc-bar"></canvas></div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-title">계좌 선택 → 보유 종목 상세</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px" id="acc-chips"></div>
+      <div id="acc-detail-table"></div>
+    </div>
   `;
   setTimeout(() => {
     destroyChart('analyze-acc-pie');
@@ -1427,14 +1451,85 @@ function renderAnalyzeAccount(el) {
     chartInstances['analyze-acc-pie'] = new Chart(document.getElementById('analyze-acc-pie'), {
       type: 'doughnut',
       data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color), borderWidth:2, borderColor:'#111318' }] },
-      options: { plugins: { legend: { labels: { color:'#8892a4' } } } }
+      options: { plugins: { legend: { labels: { color:'#8892a4', font:{family:'Noto Sans KR'} } } } }
     });
     chartInstances['analyze-acc-bar'] = new Chart(document.getElementById('analyze-acc-bar'), {
       type: 'bar',
       data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color+'99'), borderColor: byAcc.map(a=>a.color), borderWidth:1 }] },
       options: { plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } } }
     });
+
+    // 계좌 칩 버튼
+    const chips = document.getElementById('acc-chips');
+    if (chips) {
+      chips.innerHTML = data.accounts.map(a => `
+        <div class="account-chip" onclick="showAccDetail(${a.id})" id="chip-${a.id}">
+          <span class="dot" style="background:${a.color}"></span>${a.name}
+        </div>
+      `).join('');
+    }
+    // 기본 첫 번째 계좌 선택
+    if (data.accounts.length) showAccDetail(data.accounts[0].id);
   }, 50);
+}
+
+function showAccDetail(accId) {
+  // 칩 활성화
+  document.querySelectorAll('#acc-chips .account-chip').forEach(c => c.style.borderColor = '');
+  const activeChip = document.getElementById('chip-' + accId);
+  if (activeChip) activeChip.style.borderColor = 'var(--accent)';
+
+  const acc = data.accounts.find(a => a.id === accId);
+  const el = document.getElementById('acc-detail-table');
+  if (!el) return;
+
+  // 해당 계좌의 보유 종목 계산
+  const map = {};
+  data.trades.filter(t => t.accId === accId).forEach(t => {
+    const key = t.ticker;
+    if (!map[key]) map[key] = { ticker: t.ticker, name: t.name || '', category: t.category, qty: 0, cost: 0 };
+    if (t.type === 'buy') { map[key].qty += t.qty; map[key].cost += t.qty * t.price; }
+    else { map[key].qty -= t.qty; map[key].cost -= t.qty * t.price; }
+    if (t.name) map[key].name = t.name;
+  });
+  const holdings = Object.values(map).filter(h => h.qty > 0.0001);
+
+  if (!holdings.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div>${acc?.name || ''} 계좌에 보유 종목이 없습니다.</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span style="width:10px;height:10px;border-radius:50%;background:${acc?.color||'#888'};display:inline-block"></span>
+      ${acc?.name || ''} 보유 종목
+    </div>
+    <table>
+      <thead><tr><th>티커</th><th>종목명</th><th>분류</th><th>수량</th><th>평균단가</th><th>최근종가</th><th>평가금액</th><th>손익</th><th>수익률</th></tr></thead>
+      <tbody>
+      ${holdings.map(h => {
+        const avgPrice = h.cost / h.qty;
+        const priceData = data.prices[h.ticker] || {};
+        const dates = Object.keys(priceData).sort();
+        const latestPrice = dates.length ? priceData[dates[dates.length-1]] : null;
+        const marketVal = latestPrice ? latestPrice * h.qty : h.cost;
+        const pnl = marketVal - h.cost;
+        const pct = (pnl / h.cost * 100);
+        return `<tr>
+          <td><b>${h.ticker}</b></td>
+          <td style="color:var(--text-dim)">${h.name || '-'}</td>
+          <td><span class="tag tag-0">${h.category}</span></td>
+          <td>${h.qty.toLocaleString()}</td>
+          <td>${Math.round(avgPrice).toLocaleString()}</td>
+          <td>${latestPrice ? latestPrice.toLocaleString() : '<span style="color:var(--text-muted)">미입력</span>'}</td>
+          <td>${Math.round(marketVal).toLocaleString()}</td>
+          <td class="${pnl>=0?'pos':'neg'}">${pnl>=0?'+':''}${Math.round(pnl).toLocaleString()}</td>
+          <td class="${pct>=0?'pos':'neg'}">${pct>=0?'+':''}${pct.toFixed(2)}%</td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>
+  `;
 }
 
 function renderAnalyzeCategory(el) {
