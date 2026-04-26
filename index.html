@@ -574,7 +574,26 @@
       </div>
 
       <div class="card">
-        <div class="card-title">최근 거래 내역</div>
+        <div class="card-title">거래 내역</div>
+        <div class="filter-row mb-16">
+          <div class="form-group" style="flex:none">
+            <label class="form-label" style="font-size:10px">시작일</label>
+            <input type="date" id="rt-date-from" style="width:140px" onchange="renderRecentTrades()">
+          </div>
+          <div class="form-group" style="flex:none">
+            <label class="form-label" style="font-size:10px">종료일</label>
+            <input type="date" id="rt-date-to" style="width:140px" onchange="renderRecentTrades()">
+          </div>
+          <select id="rt-account" style="width:150px" onchange="renderRecentTrades()">
+            <option value="">전체 계좌</option>
+          </select>
+          <select id="rt-category" style="width:130px" onchange="renderRecentTrades()">
+            <option value="">전체 분류</option>
+          </select>
+          <input type="text" id="rt-ticker" placeholder="종목 검색" style="width:130px" oninput="renderRecentTrades()">
+          <button class="btn btn-ghost btn-sm" onclick="clearTradeFilters()">초기화</button>
+        </div>
+        <div id="rt-count" style="font-size:12px;color:var(--text-muted);margin-bottom:8px"></div>
         <div class="table-wrap" id="recent-trades"></div>
       </div>
     </div>
@@ -653,12 +672,17 @@
           <select id="profit-ticker-select" style="width:200px" onchange="renderProfitChart()">
             <option value="all">전체 포트폴리오</option>
           </select>
-          <select id="profit-period" style="width:120px" onchange="renderProfitChart()">
+          <select id="profit-period" style="width:120px" onchange="onProfitPeriodChange()">
             <option value="30">최근 30일</option>
             <option value="90">최근 90일</option>
             <option value="180">최근 180일</option>
             <option value="all">전체</option>
+            <option value="custom">기준일 설정</option>
           </select>
+          <div id="profit-start-date-wrap" style="display:none;align-items:center;gap:6px">
+            <label style="font-size:12px;color:var(--text-muted)">시작일</label>
+            <input type="date" id="profit-start-date" style="width:150px" onchange="renderProfitChart()">
+          </div>
         </div>
         <div class="chart-wrap-tall"><canvas id="chart-profit"></canvas></div>
       </div>
@@ -974,6 +998,54 @@
   </div>
 </div>
 
+<!-- MODAL: Trade edit -->
+<div class="modal-overlay" id="modal-trade">
+  <div class="modal" style="width:520px">
+    <div class="modal-title">거래 수정</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div class="form-group">
+        <label class="form-label">날짜</label>
+        <input type="date" id="edit-t-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">계좌</label>
+        <select id="edit-t-account"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">분류</label>
+        <input type="text" id="edit-t-category">
+      </div>
+      <div class="form-group">
+        <label class="form-label">티커</label>
+        <input type="text" id="edit-t-ticker">
+      </div>
+      <div class="form-group">
+        <label class="form-label">종목명</label>
+        <input type="text" id="edit-t-name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">거래 유형</label>
+        <select id="edit-t-type">
+          <option value="buy">매수</option>
+          <option value="sell">매도</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">수량</label>
+        <input type="number" id="edit-t-qty">
+      </div>
+      <div class="form-group">
+        <label class="form-label">가격</label>
+        <input type="number" id="edit-t-price">
+      </div>
+    </div>
+    <div class="flex gap-10">
+      <button class="btn btn-primary flex-1" onclick="saveTradeEdit()">저장</button>
+      <button class="btn btn-ghost" onclick="closeTradeModal()">취소</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ==================== DATA STORE ====================
 const COLORS = ['#00e5b4','#6c63ff','#ffd93d','#ff4e6a','#64a0ff','#ff9f43','#a29bfe','#fd79a8','#55efc4','#fdcb6e'];
@@ -1083,20 +1155,56 @@ function renderAccounts() {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏦</div>등록된 계좌가 없습니다.</div>';
     return;
   }
-  el.innerHTML = data.accounts.map(acc => `
-    <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface2);border-radius:10px;margin-bottom:8px;border:1px solid var(--border)">
-      <div style="width:12px;height:12px;border-radius:50%;background:${acc.color};flex-shrink:0"></div>
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:15px">${acc.name}</div>
-        <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
-          ${acc.tags.map((t,i) => `<span class="tag tag-${i%5}">${t}</span>`).join('')}
-          ${!acc.tags.length ? '<span style="color:var(--text-muted);font-size:12px">태그 없음</span>' : ''}
+
+  el.innerHTML = data.accounts.map(acc => {
+    // 해당 계좌의 보유 종목 계산
+    const map = {};
+    data.trades.filter(t => t.accId === acc.id).forEach(t => {
+      if (!map[t.ticker]) map[t.ticker] = { qty: 0, cost: 0 };
+      if (t.type === 'buy') { map[t.ticker].qty += t.qty; map[t.ticker].cost += t.qty * t.price; }
+      else { map[t.ticker].qty -= t.qty; map[t.ticker].cost -= t.qty * t.price; }
+    });
+    const holdings = Object.entries(map).filter(([,h]) => h.qty > 0.0001);
+    const totalCost = holdings.reduce((s,[,h]) => s + h.cost, 0);
+
+    // 최근 종가 기준 평가금액
+    let totalMarket = 0;
+    holdings.forEach(([ticker, h]) => {
+      const pd = data.prices[ticker] || {};
+      const dates = Object.keys(pd).sort();
+      const price = dates.length ? pd[dates[dates.length-1]] : null;
+      totalMarket += price ? price * h.qty : h.cost;
+    });
+    const pnl = totalMarket - totalCost;
+    const pct = totalCost ? (pnl / totalCost * 100) : 0;
+    const hasPrices = holdings.some(([ticker]) => Object.keys(data.prices[ticker]||{}).length > 0);
+
+    return `
+    <div style="background:var(--surface2);border-radius:10px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden">
+      <div style="display:flex;align-items:center;gap:14px;padding:14px 16px">
+        <div style="width:12px;height:12px;border-radius:50%;background:${acc.color};flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:15px">${acc.name}</div>
+          <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
+            ${acc.tags.map((t,i) => `<span class="tag tag-${i%5}">${t}</span>`).join('')}
+            ${!acc.tags.length ? '<span style="color:var(--text-muted);font-size:12px">태그 없음</span>' : ''}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:12px;color:var(--text-muted)">투자금액</div>
+          <div style="font-weight:700;font-size:14px">${totalCost ? Math.round(totalCost).toLocaleString() + '원' : '-'}</div>
+          ${hasPrices ? `
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">평가손익</div>
+          <div style="font-weight:700;font-size:13px;color:${pnl>=0?'var(--accent)':'var(--accent2)'}">${pnl>=0?'+':''}${Math.round(pnl).toLocaleString()}원 (${pct>=0?'+':''}${pct.toFixed(2)}%)</div>
+          ` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="openEditAccount(${acc.id})">편집</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAccount(${acc.id})">삭제</button>
         </div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="openEditAccount(${acc.id})">편집</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteAccount(${acc.id})">삭제</button>
     </div>
-  `).join('');
+  `;}).join('');
 }
 
 function openEditAccount(id) {
@@ -1223,8 +1331,55 @@ function deleteTrade(id) {
 }
 
 function renderRecentTrades() {
-  const recent = [...data.trades].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 20);
-  renderTradeTable('recent-trades', recent, true);
+  // 필터 셀렉트 업데이트
+  const accSel = document.getElementById('rt-account');
+  const catSel = document.getElementById('rt-category');
+  if (accSel) {
+    const curAcc = accSel.value;
+    accSel.innerHTML = '<option value="">전체 계좌</option>' +
+      data.accounts.map(a => `<option value="${a.id}" ${curAcc==a.id?'selected':''}>${a.name}</option>`).join('');
+  }
+  if (catSel) {
+    const curCat = catSel.value;
+    const cats = [...new Set(data.trades.map(t => t.category).filter(Boolean))].sort();
+    catSel.innerHTML = '<option value="">전체 분류</option>' +
+      cats.map(c => `<option value="${c}" ${curCat===c?'selected':''}>${c}</option>`).join('');
+  }
+
+  // 필터 값 읽기
+  const dateFrom = document.getElementById('rt-date-from')?.value || '';
+  const dateTo = document.getElementById('rt-date-to')?.value || '';
+  const accFilter = document.getElementById('rt-account')?.value || '';
+  const catFilter = document.getElementById('rt-category')?.value || '';
+  const tickFilter = (document.getElementById('rt-ticker')?.value || '').trim().toUpperCase();
+
+  // 필터 적용
+  let trades = [...data.trades].sort((a,b) => b.date.localeCompare(a.date));
+  if (dateFrom) trades = trades.filter(t => t.date >= dateFrom);
+  if (dateTo)   trades = trades.filter(t => t.date <= dateTo);
+  if (accFilter) trades = trades.filter(t => t.accId == accFilter);
+  if (catFilter) trades = trades.filter(t => t.category === catFilter);
+  if (tickFilter) trades = trades.filter(t =>
+    t.ticker.includes(tickFilter) || (t.name || '').toUpperCase().includes(tickFilter)
+  );
+
+  // 건수 표시
+  const countEl = document.getElementById('rt-count');
+  if (countEl) {
+    const total = data.trades.length;
+    const shown = trades.length;
+    countEl.textContent = total === shown ? `총 ${total}건` : `${shown}건 (전체 ${total}건 중)`;
+  }
+
+  renderTradeTable('recent-trades', trades, true);
+}
+
+function clearTradeFilters() {
+  const ids = ['rt-date-from','rt-date-to','rt-ticker'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const sels = ['rt-account','rt-category'];
+  sels.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  renderRecentTrades();
 }
 
 function renderTradeTable(containerId, trades, showDelete) {
@@ -1255,7 +1410,10 @@ function renderTradeTable(containerId, trades, showDelete) {
         <td>${t.qty.toLocaleString()}</td>
         <td>${t.price.toLocaleString()}</td>
         <td><b>${(t.qty * t.price).toLocaleString()}</b></td>
-        ${showDelete ? `<td><button class="btn btn-danger btn-sm" onclick="deleteTrade(${t.id})">삭제</button></td>` : ''}
+        ${showDelete ? `<td style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="openTradeEdit(${t.id})">수정</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTrade(${t.id})">삭제</button>
+        </td>` : ''}
       </tr>`;
     }).join('')}
     </tbody>
@@ -1688,7 +1846,10 @@ function renderProfitChart() {
   });
   allDates = [...allDates].sort();
 
-  if (period !== 'all') {
+  if (period === 'custom') {
+    const startDate = document.getElementById('profit-start-date')?.value;
+    if (startDate) allDates = allDates.filter(d => d >= startDate);
+  } else if (period !== 'all') {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - parseInt(period));
     allDates = allDates.filter(d => new Date(d) >= cutoff);
@@ -2339,6 +2500,58 @@ function renderRealizedTable() {
 }
 
 
+// ==================== TRADE EDIT ====================
+let editTradeId = null;
+
+function openTradeEdit(id) {
+  editTradeId = id;
+  const t = data.trades.find(x => x.id === id);
+  if (!t) return;
+  const accSel = document.getElementById('edit-t-account');
+  accSel.innerHTML = data.accounts.map(a =>
+    `<option value="${a.id}" ${a.id === t.accId ? 'selected' : ''}>${a.name}</option>`
+  ).join('');
+  document.getElementById('edit-t-date').value = t.date;
+  document.getElementById('edit-t-category').value = t.category;
+  document.getElementById('edit-t-ticker').value = t.ticker;
+  document.getElementById('edit-t-name').value = t.name || '';
+  document.getElementById('edit-t-type').value = t.type;
+  document.getElementById('edit-t-qty').value = t.qty;
+  document.getElementById('edit-t-price').value = t.price;
+  document.getElementById('modal-trade').classList.add('open');
+}
+
+function saveTradeEdit() {
+  const t = data.trades.find(x => x.id === editTradeId);
+  if (!t) return;
+  t.date = document.getElementById('edit-t-date').value;
+  t.accId = parseInt(document.getElementById('edit-t-account').value);
+  t.category = document.getElementById('edit-t-category').value.trim();
+  t.ticker = document.getElementById('edit-t-ticker').value.trim().toUpperCase();
+  t.name = document.getElementById('edit-t-name').value.trim();
+  t.type = document.getElementById('edit-t-type').value;
+  t.qty = parseFloat(document.getElementById('edit-t-qty').value);
+  t.price = parseFloat(document.getElementById('edit-t-price').value);
+  const stock = data.stocks.find(s => s.ticker === t.ticker);
+  if (stock) { stock.name = t.name || stock.name; stock.category = t.category; }
+  save();
+  closeTradeModal();
+  renderRecentTrades();
+  renderHistory();
+}
+
+function closeTradeModal() {
+  document.getElementById('modal-trade').classList.remove('open');
+}
+
+// ==================== PROFIT PERIOD CHANGE ====================
+function onProfitPeriodChange() {
+  const period = document.getElementById('profit-period').value;
+  const wrap = document.getElementById('profit-start-date-wrap');
+  if (wrap) wrap.style.display = period === 'custom' ? 'flex' : 'none';
+  renderProfitChart();
+}
+
 // ==================== UTILS ====================
 function destroyChart(id) {
   if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
@@ -2369,6 +2582,9 @@ function init() {
 
 document.getElementById('modal-acc').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
+});
+document.getElementById('modal-trade').addEventListener('click', function(e) {
+  if (e.target === this) closeTradeModal();
 });
 
 init();
