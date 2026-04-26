@@ -22,6 +22,21 @@
     --text-dim: #8892a4;
   }
 
+  /* ===== 라이트 모드 ===== */
+  html.light {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface2: #f5f7fa;
+    --border: #e0e4ec;
+    --accent: #00a882;
+    --accent2: #e03050;
+    --accent3: #e6a800;
+    --accent4: #5048cc;
+    --text: #1a1d26;
+    --text-muted: #9098ae;
+    --text-dim: #6b7490;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -112,6 +127,27 @@
     box-shadow: 0 2px 12px rgba(0,0,0,.4);
   }
   .sidebar-toggle:hover { border-color: var(--accent); }
+
+  /* 테마 토글 버튼 */
+  .theme-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 300;
+    width: 42px;
+    height: 42px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all .15s;
+    box-shadow: 0 2px 12px rgba(0,0,0,.15);
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
 
   /* ===== DESKTOP COLLAPSED (icon-only) ===== */
   @media (min-width: 769px) {
@@ -445,6 +481,7 @@
 <body>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+<button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="다크/라이트 모드 전환">🌙</button>
 
 <div class="app">
 
@@ -1059,6 +1096,100 @@
 // ==================== DATA STORE ====================
 const COLORS = ['#00e5b4','#6c63ff','#ffd93d','#ff4e6a','#64a0ff','#ff9f43','#a29bfe','#fd79a8','#55efc4','#fdcb6e'];
 
+// ===== 공통 차트 옵션 헬퍼 =====
+function chartTextColor() {
+  return document.documentElement.classList.contains('light') ? '#6b7490' : '#8892a4';
+}
+function chartGridColor() {
+  return document.documentElement.classList.contains('light') ? '#e0e4ec' : '#1e2530';
+}
+
+function doughnutOpts(extra = {}) {
+  const tc = chartTextColor();
+  return {
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: tc,
+          font: { family: 'Noto Sans KR', size: 12 },
+          padding: 14,
+          generateLabels(chart) {
+            const data = chart.data;
+            return data.labels.map((label, i) => {
+              const val = data.datasets[0].data[i];
+              const total = data.datasets[0].data.reduce((a,b) => a+b, 0);
+              const pct = total ? (val/total*100).toFixed(1) : 0;
+              return {
+                text: `${label}  ${val.toLocaleString()}  (${pct}%)`,
+                fillStyle: data.datasets[0].backgroundColor[i],
+                strokeStyle: document.documentElement.classList.contains('light') ? '#fff' : '#111318',
+                lineWidth: 2,
+                index: i,
+                hidden: false,
+              };
+            });
+          }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label(ctx) {
+            const val = ctx.parsed;
+            const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+            const pct = total ? (val/total*100).toFixed(1) : 0;
+            return `  ${ctx.label}: ${val.toLocaleString()} (${pct}%)`;
+          }
+        }
+      },
+    },
+    ...extra
+  };
+}
+
+function barOpts(extra = {}) {
+  const tc = chartTextColor();
+  const gc = chartGridColor();
+  return {
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: ctx => `  ${ctx.parsed.y.toLocaleString()}` }
+      }
+    },
+    scales: {
+      x: { ticks: { color: tc, font: { family: 'Noto Sans KR' } }, grid: { color: gc } },
+      y: { ticks: { color: tc, callback: v => v.toLocaleString() }, grid: { color: gc } }
+    },
+    animation: {
+      onComplete(ctx) {
+        const chart = ctx.chart;
+        const { ctx: c, data } = chart;
+        c.save();
+        c.font = `bold 11px "Noto Sans KR", sans-serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'bottom';
+        data.datasets.forEach((dataset, di) => {
+          chart.getDatasetMeta(di).data.forEach((bar, i) => {
+            const val = dataset.data[i];
+            if (val == null || val === 0) return;
+            const label = val >= 10000000
+              ? (val/100000000).toFixed(1) + '억'
+              : val >= 10000
+              ? (val/10000).toFixed(0) + '만'
+              : val.toLocaleString();
+            c.fillStyle = document.documentElement.classList.contains('light') ? '#1a1d26' : '#e8eaf0';
+            c.fillText(label, bar.x, bar.y - 3);
+          });
+        });
+        c.restore();
+      }
+    },
+    ...extra
+  };
+}
+
+
 let data = JSON.parse(localStorage.getItem('folio_data') || 'null') || {
   accounts: [],
   trades: [],
@@ -1074,6 +1205,39 @@ let chartInstances = {};
 
 function save() {
   localStorage.setItem('folio_data', JSON.stringify(data));
+}
+
+// ==================== THEME TOGGLE ====================
+function toggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-toggle').textContent = isLight ? '☀️' : '🌙';
+  // 차트 색상 업데이트
+  setTimeout(() => {
+    const page = document.querySelector('.page.active');
+    if (page) {
+      const pageId = page.id.replace('page-', '');
+      if (['dashboard','analyze','profit','dividend','realized'].includes(pageId)) {
+        if (pageId === 'dashboard') renderDashboard();
+        else if (pageId === 'analyze') renderAnalyze();
+        else if (pageId === 'profit') renderProfitChart();
+        else if (pageId === 'dividend') renderDividendCharts();
+        else if (pageId === 'realized') renderRealizedCharts();
+      }
+    }
+  }, 50);
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('theme');
+  // 시스템 다크모드 감지
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isLight = saved ? saved === 'light' : !prefersDark;
+  if (isLight) {
+    document.documentElement.classList.add('light');
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = '☀️';
+  }
 }
 
 // ==================== SIDEBAR TOGGLE ====================
@@ -1525,7 +1689,7 @@ function renderDashboard() {
         labels: byAccount.map(a => a.name),
         datasets: [{ data: byAccount.map(a => Math.round(a.value)), backgroundColor: byAccount.map(a => a.color), borderWidth: 2, borderColor: '#111318' }]
       },
-      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
+      options: doughnutOpts()
     });
   }
 
@@ -1539,7 +1703,7 @@ function renderDashboard() {
         labels: byCategory.map(c => c.name),
         datasets: [{ data: byCategory.map(c => Math.round(c.value)), backgroundColor: COLORS, borderWidth: 2, borderColor: '#111318' }]
       },
-      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
+      options: doughnutOpts()
     });
   }
 
@@ -1660,12 +1824,12 @@ function renderAnalyzeAccount(el) {
     chartInstances['analyze-acc-pie'] = new Chart(document.getElementById('analyze-acc-pie'), {
       type: 'doughnut',
       data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color), borderWidth:2, borderColor:'#111318' }] },
-      options: { plugins: { legend: { labels: { color:'#8892a4', font:{family:'Noto Sans KR'} } } } }
+      options: doughnutOpts()
     });
     chartInstances['analyze-acc-bar'] = new Chart(document.getElementById('analyze-acc-bar'), {
       type: 'bar',
-      data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color+'99'), borderColor: byAcc.map(a=>a.color), borderWidth:1 }] },
-      options: { plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } } }
+      data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color+'99'), borderColor: byAcc.map(a=>a.color), borderWidth:1, borderRadius:4 }] },
+      options: barOpts()
     });
     const chips = document.getElementById('acc-chips');
     if (chips) {
@@ -1772,7 +1936,7 @@ function renderAnalyzeCategory(el) {
         datasets: [{ data: byCat.map(c=>Math.round(c.value)), backgroundColor: COLORS, borderWidth:2, borderColor:'#111318' }]
       },
       options: {
-        plugins: { legend: { labels: { color:'#8892a4', font:{family:'Noto Sans KR'} } } },
+        ...doughnutOpts(),
         onClick(evt, elements) {
           if (elements.length) onCatClick(byCat[elements[0].index].name);
         }
@@ -1786,8 +1950,7 @@ function renderAnalyzeCategory(el) {
         datasets: [{ data: byCat.map(c=>Math.round(c.value)), backgroundColor: COLORS.map(c=>c+'99'), borderColor: COLORS, borderWidth:1, borderRadius:4 }]
       },
       options: {
-        plugins: { legend: { display: false } },
-        scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } },
+        ...barOpts(),
         onClick(evt, elements) {
           if (elements.length) onCatClick(byCat[elements[0].index].name);
         }
@@ -1876,12 +2039,12 @@ function renderAnalyzeTicker(el) {
     chartInstances['analyze-tick-pie'] = new Chart(document.getElementById('analyze-tick-pie'), {
       type: 'doughnut',
       data: { labels, datasets: [{ data: holdings.map(h=>Math.round(h.cost)), backgroundColor: COLORS, borderWidth:2, borderColor:'#111318' }] },
-      options: { plugins: { legend: { labels: { color:'#8892a4', font: { family: 'Noto Sans KR' } } } } }
+      options: doughnutOpts()
     });
     chartInstances['analyze-tick-bar'] = new Chart(document.getElementById('analyze-tick-bar'), {
       type: 'bar',
-      data: { labels, datasets: [{ data: holdings.map(h=>Math.round(h.cost)), backgroundColor: COLORS.map(c=>c+'99'), borderColor: COLORS, borderWidth:1 }] },
-      options: { plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } } }
+      data: { labels, datasets: [{ data: holdings.map(h=>Math.round(h.cost)), backgroundColor: COLORS.map(c=>c+'99'), borderColor: COLORS, borderWidth:1, borderRadius:4 }] },
+      options: barOpts()
     });
   }, 50);
 }
@@ -2046,16 +2209,46 @@ function renderProfitChart() {
     data: { labels: allDates, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } },
+      plugins: {
+        legend: { labels: { color: chartTextColor(), font: { family: 'Noto Sans KR' } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `  ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2)}%`
+          }
+        }
+      },
       scales: {
-        x: { ticks: { color: '#8892a4', maxTicksLimit: 12 }, grid: { color: '#1e2530' } },
+        x: { ticks: { color: chartTextColor(), maxTicksLimit: 12 }, grid: { color: chartGridColor() } },
         y: {
-          ticks: { color: '#8892a4', callback: v => v?.toFixed(2) + '%' },
-          grid: { color: '#1e2530' },
+          ticks: { color: chartTextColor(), callback: v => v?.toFixed(1) + '%' },
+          grid: { color: chartGridColor() },
           afterDataLimits(axis) {
             axis.min = Math.min(axis.min, 0) - 1;
             axis.max = Math.max(axis.max, 0) + 1;
           }
+        }
+      },
+      animation: {
+        onComplete(ctx) {
+          // 마지막 데이터 포인트에 값 라벨 표시
+          const chart = ctx.chart;
+          const { ctx: c, data, scales } = chart;
+          c.save();
+          c.font = 'bold 11px "Noto Sans KR", sans-serif';
+          c.textAlign = 'left';
+          c.textBaseline = 'middle';
+          data.datasets.forEach((dataset, di) => {
+            const meta = chart.getDatasetMeta(di);
+            const lastIdx = dataset.data.reduce((last, v, i) => v != null ? i : last, -1);
+            if (lastIdx < 0) return;
+            const pt = meta.data[lastIdx];
+            if (!pt) return;
+            const val = dataset.data[lastIdx];
+            const color = dataset.borderColor || '#e8eaf0';
+            c.fillStyle = color;
+            c.fillText(`${val?.toFixed(2)}%`, pt.x + 6, pt.y);
+          });
+          c.restore();
         }
       }
     }
@@ -2375,14 +2568,7 @@ function renderDividendCharts() {
           borderRadius: 4,
         }]
       },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: '#8892a4' }, grid: { color: '#1e2530' } },
-          y: { ticks: { color: '#8892a4', callback: v => v.toLocaleString() }, grid: { color: '#1e2530' } }
-        }
-      }
+      options: barOpts({ responsive: true, maintainAspectRatio: false })
     });
   }
 
@@ -2402,7 +2588,7 @@ function renderDividendCharts() {
         labels: tickerKeys,
         datasets: [{ data: tickerKeys.map(k => Math.round(tickerMap[k])), backgroundColor: COLORS, borderWidth: 2, borderColor: '#111318' }]
       },
-      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
+      options: doughnutOpts()
     });
   }
 }
@@ -2610,14 +2796,7 @@ function renderRealizedCharts() {
           borderWidth: 1, borderRadius: 4,
         }]
       },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: '#8892a4' }, grid: { color: '#1e2530' } },
-          y: { ticks: { color: '#8892a4', callback: v => v.toLocaleString() }, grid: { color: '#1e2530' } }
-        }
-      }
+      options: barOpts({ responsive: true, maintainAspectRatio: false })
     });
   }
 
@@ -2637,7 +2816,7 @@ function renderRealizedCharts() {
         labels: tickerKeys,
         datasets: [{ data: tickerKeys.map(k => Math.round(tickerMap[k])), backgroundColor: COLORS, borderWidth: 2, borderColor: '#111318' }]
       },
-      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
+      options: doughnutOpts()
     });
   }
 }
@@ -2754,6 +2933,7 @@ function destroyChart(id) {
 
 // ==================== INIT ====================
 function init() {
+  initTheme();
   if (!data.stocks) data.stocks = [];
   if (!data.dividends) data.dividends = [];
   if (!data.realized) data.realized = [];
