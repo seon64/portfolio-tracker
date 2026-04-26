@@ -1059,92 +1059,6 @@
 // ==================== DATA STORE ====================
 const COLORS = ['#00e5b4','#6c63ff','#ffd93d','#ff4e6a','#64a0ff','#ff9f43','#a29bfe','#fd79a8','#55efc4','#fdcb6e'];
 
-// ===== 공통 차트 옵션 헬퍼 =====
-function doughnutOpts(extra = {}) {
-  return {
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          color: '#8892a4',
-          font: { family: 'Noto Sans KR', size: 12 },
-          padding: 14,
-          generateLabels(chart) {
-            const data = chart.data;
-            return data.labels.map((label, i) => {
-              const val = data.datasets[0].data[i];
-              const total = data.datasets[0].data.reduce((a,b) => a+b, 0);
-              const pct = total ? (val/total*100).toFixed(1) : 0;
-              return {
-                text: `${label}  ${val.toLocaleString()}  (${pct}%)`,
-                fillStyle: data.datasets[0].backgroundColor[i],
-                strokeStyle: '#111318',
-                lineWidth: 2,
-                index: i,
-                hidden: false,
-              };
-            });
-          }
-        }
-      },
-      tooltip: {
-        callbacks: {
-          label(ctx) {
-            const val = ctx.parsed;
-            const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
-            const pct = total ? (val/total*100).toFixed(1) : 0;
-            return `  ${ctx.label}: ${val.toLocaleString()} (${pct}%)`;
-          }
-        }
-      },
-      datalabels: false,
-    },
-    ...extra
-  };
-}
-
-function barOpts(extra = {}) {
-  return {
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: { label: ctx => `  ${ctx.parsed.y.toLocaleString()}` }
-      }
-    },
-    scales: {
-      x: { ticks: { color: '#8892a4', font: { family: 'Noto Sans KR' } }, grid: { color: '#1e2530' } },
-      y: { ticks: { color: '#8892a4', callback: v => v.toLocaleString() }, grid: { color: '#1e2530' } }
-    },
-    animation: {
-      onComplete(ctx) {
-        // 바 위에 값 라벨 그리기
-        const chart = ctx.chart;
-        const { ctx: c, data, scales } = chart;
-        c.save();
-        c.font = `bold 11px "Noto Sans KR", sans-serif`;
-        c.textAlign = 'center';
-        c.textBaseline = 'bottom';
-        data.datasets.forEach((dataset, di) => {
-          chart.getDatasetMeta(di).data.forEach((bar, i) => {
-            const val = dataset.data[i];
-            if (val == null || val === 0) return;
-            const label = val >= 10000000
-              ? (val/100000000).toFixed(1) + '억'
-              : val >= 10000
-              ? (val/10000).toFixed(0) + '만'
-              : val.toLocaleString();
-            c.fillStyle = '#e8eaf0';
-            c.fillText(label, bar.x, bar.y - 3);
-          });
-        });
-        c.restore();
-      }
-    },
-    ...extra
-  };
-}
-
-
 let data = JSON.parse(localStorage.getItem('folio_data') || 'null') || {
   accounts: [],
   trades: [],
@@ -1611,7 +1525,7 @@ function renderDashboard() {
         labels: byAccount.map(a => a.name),
         datasets: [{ data: byAccount.map(a => Math.round(a.value)), backgroundColor: byAccount.map(a => a.color), borderWidth: 2, borderColor: '#111318' }]
       },
-      options: doughnutOpts()
+      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
     });
   }
 
@@ -1625,7 +1539,7 @@ function renderDashboard() {
         labels: byCategory.map(c => c.name),
         datasets: [{ data: byCategory.map(c => Math.round(c.value)), backgroundColor: COLORS, borderWidth: 2, borderColor: '#111318' }]
       },
-      options: doughnutOpts()
+      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
     });
   }
 
@@ -1746,12 +1660,12 @@ function renderAnalyzeAccount(el) {
     chartInstances['analyze-acc-pie'] = new Chart(document.getElementById('analyze-acc-pie'), {
       type: 'doughnut',
       data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color), borderWidth:2, borderColor:'#111318' }] },
-      options: doughnutOpts()
+      options: { plugins: { legend: { labels: { color:'#8892a4', font:{family:'Noto Sans KR'} } } } }
     });
     chartInstances['analyze-acc-bar'] = new Chart(document.getElementById('analyze-acc-bar'), {
       type: 'bar',
-      data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color+'99'), borderColor: byAcc.map(a=>a.color), borderWidth:1, borderRadius:4 }] },
-      options: barOpts()
+      data: { labels: byAcc.map(a=>a.name), datasets: [{ data: byAcc.map(a=>Math.round(a.value)), backgroundColor: byAcc.map(a=>a.color+'99'), borderColor: byAcc.map(a=>a.color), borderWidth:1 }] },
+      options: { plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } } }
     });
     const chips = document.getElementById('acc-chips');
     if (chips) {
@@ -1858,7 +1772,7 @@ function renderAnalyzeCategory(el) {
         datasets: [{ data: byCat.map(c=>Math.round(c.value)), backgroundColor: COLORS, borderWidth:2, borderColor:'#111318' }]
       },
       options: {
-        ...doughnutOpts(),
+        plugins: { legend: { labels: { color:'#8892a4', font:{family:'Noto Sans KR'} } } },
         onClick(evt, elements) {
           if (elements.length) onCatClick(byCat[elements[0].index].name);
         }
@@ -1872,7 +1786,8 @@ function renderAnalyzeCategory(el) {
         datasets: [{ data: byCat.map(c=>Math.round(c.value)), backgroundColor: COLORS.map(c=>c+'99'), borderColor: COLORS, borderWidth:1, borderRadius:4 }]
       },
       options: {
-        ...barOpts(),
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } },
         onClick(evt, elements) {
           if (elements.length) onCatClick(byCat[elements[0].index].name);
         }
@@ -1961,12 +1876,12 @@ function renderAnalyzeTicker(el) {
     chartInstances['analyze-tick-pie'] = new Chart(document.getElementById('analyze-tick-pie'), {
       type: 'doughnut',
       data: { labels, datasets: [{ data: holdings.map(h=>Math.round(h.cost)), backgroundColor: COLORS, borderWidth:2, borderColor:'#111318' }] },
-      options: doughnutOpts()
+      options: { plugins: { legend: { labels: { color:'#8892a4', font: { family: 'Noto Sans KR' } } } } }
     });
     chartInstances['analyze-tick-bar'] = new Chart(document.getElementById('analyze-tick-bar'), {
       type: 'bar',
-      data: { labels, datasets: [{ data: holdings.map(h=>Math.round(h.cost)), backgroundColor: COLORS.map(c=>c+'99'), borderColor: COLORS, borderWidth:1, borderRadius:4 }] },
-      options: barOpts()
+      data: { labels, datasets: [{ data: holdings.map(h=>Math.round(h.cost)), backgroundColor: COLORS.map(c=>c+'99'), borderColor: COLORS, borderWidth:1 }] },
+      options: { plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#8892a4'} }, y: { ticks:{color:'#8892a4'} } } }
     });
   }, 50);
 }
@@ -2131,46 +2046,16 @@ function renderProfitChart() {
     data: { labels: allDates, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } },
-        tooltip: {
-          callbacks: {
-            label: ctx => `  ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2)}%`
-          }
-        }
-      },
+      plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } },
       scales: {
         x: { ticks: { color: '#8892a4', maxTicksLimit: 12 }, grid: { color: '#1e2530' } },
         y: {
-          ticks: { color: '#8892a4', callback: v => v?.toFixed(1) + '%' },
+          ticks: { color: '#8892a4', callback: v => v?.toFixed(2) + '%' },
           grid: { color: '#1e2530' },
           afterDataLimits(axis) {
             axis.min = Math.min(axis.min, 0) - 1;
             axis.max = Math.max(axis.max, 0) + 1;
           }
-        }
-      },
-      animation: {
-        onComplete(ctx) {
-          // 마지막 데이터 포인트에 값 라벨 표시
-          const chart = ctx.chart;
-          const { ctx: c, data, scales } = chart;
-          c.save();
-          c.font = 'bold 11px "Noto Sans KR", sans-serif';
-          c.textAlign = 'left';
-          c.textBaseline = 'middle';
-          data.datasets.forEach((dataset, di) => {
-            const meta = chart.getDatasetMeta(di);
-            const lastIdx = dataset.data.reduce((last, v, i) => v != null ? i : last, -1);
-            if (lastIdx < 0) return;
-            const pt = meta.data[lastIdx];
-            if (!pt) return;
-            const val = dataset.data[lastIdx];
-            const color = dataset.borderColor || '#e8eaf0';
-            c.fillStyle = color;
-            c.fillText(`${val?.toFixed(2)}%`, pt.x + 6, pt.y);
-          });
-          c.restore();
         }
       }
     }
@@ -2490,7 +2375,14 @@ function renderDividendCharts() {
           borderRadius: 4,
         }]
       },
-      options: barOpts({ responsive: true, maintainAspectRatio: false })
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8892a4' }, grid: { color: '#1e2530' } },
+          y: { ticks: { color: '#8892a4', callback: v => v.toLocaleString() }, grid: { color: '#1e2530' } }
+        }
+      }
     });
   }
 
@@ -2510,7 +2402,7 @@ function renderDividendCharts() {
         labels: tickerKeys,
         datasets: [{ data: tickerKeys.map(k => Math.round(tickerMap[k])), backgroundColor: COLORS, borderWidth: 2, borderColor: '#111318' }]
       },
-      options: doughnutOpts()
+      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
     });
   }
 }
@@ -2718,7 +2610,14 @@ function renderRealizedCharts() {
           borderWidth: 1, borderRadius: 4,
         }]
       },
-      options: barOpts({ responsive: true, maintainAspectRatio: false })
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8892a4' }, grid: { color: '#1e2530' } },
+          y: { ticks: { color: '#8892a4', callback: v => v.toLocaleString() }, grid: { color: '#1e2530' } }
+        }
+      }
     });
   }
 
@@ -2738,7 +2637,7 @@ function renderRealizedCharts() {
         labels: tickerKeys,
         datasets: [{ data: tickerKeys.map(k => Math.round(tickerMap[k])), backgroundColor: COLORS, borderWidth: 2, borderColor: '#111318' }]
       },
-      options: doughnutOpts()
+      options: { plugins: { legend: { labels: { color: '#8892a4', font: { family: 'Noto Sans KR' } } } } }
     });
   }
 }
