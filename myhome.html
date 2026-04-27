@@ -43,6 +43,8 @@
 
     const UNITS = ["개", "병", "봉지", "캔", "g", "ml", "L", "kg", "정", "세트", "장", "롤"];
 
+    const PRESET_TAGS = ["반찬", "밀키트", "야채", "과일", "육류", "해산물", "유제품", "음료", "양념", "간식", "냉동식품", "빵/곡물"];
+
     const DEFAULT_ITEMS = [
       { id: 1, name: "우유",    category: "fridge",     quantity: 1,  unit: "병",  purchaseDate: "2026-04-20", expiryDate: "2026-05-01", memo: "" },
       { id: 2, name: "냉동만두", category: "freezer",    quantity: 1,  unit: "봉지", purchaseDate: "2026-04-15", expiryDate: "2026-10-15", memo: "" },
@@ -88,12 +90,13 @@
         } catch { return DEFAULT_ITEMS; }
       });
       const [activeCategory, setActiveCategory] = useState("all");
+      const [activeTag, setActiveTag] = useState(null);
       const [showForm, setShowForm]   = useState(false);
       const [editItem, setEditItem]   = useState(null);
       const [search, setSearch]       = useState("");
       const [sortBy, setSortBy]       = useState("expiry");
       const [showDetail, setShowDetail] = useState(null);
-      const [form, setForm] = useState({ name: "", category: "fridge", quantity: 1, unit: "개", purchaseDate: "", expiryDate: "", memo: "" });
+      const [form, setForm] = useState({ name: "", category: "fridge", quantity: 1, unit: "개", purchaseDate: "", expiryDate: "", memo: "", tags: [] });
       const [deleteConfirm, setDeleteConfirm] = useState(null);
       const [toast, setToast] = useState(null);
       const [showUrgent, setShowUrgent] = useState(false);
@@ -112,7 +115,7 @@
         const today = new Date().toISOString().split("T")[0];
         const validCats = CATEGORIES.map(c => c.id);
         const cat = validCats.includes(activeCategory) ? activeCategory : "fridge";
-        setForm({ name: "", category: cat, quantity: 1, unit: "개", purchaseDate: today, expiryDate: "", memo: "" });
+        setForm({ name: "", category: cat, quantity: 1, unit: "개", purchaseDate: today, expiryDate: "", memo: "", tags: [] });
         setEditItem(null);
         setSaving(false);
         setShowForm(true);
@@ -156,6 +159,7 @@
 
       const filtered = items
         .filter(i => activeCategory === "all" || i.category === activeCategory)
+        .filter(i => !activeTag || (i.tags || []).includes(activeTag))
         .filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
         .sort((a, b) => {
           if (sortBy === "expiry") {
@@ -172,6 +176,11 @@
       const urgentItems = items.filter(i => { const d = daysUntilExpiry(i.expiryDate); return d !== null && d <= 7; }).sort((a,b) => (daysUntilExpiry(a.expiryDate) ?? 9999) - (daysUntilExpiry(b.expiryDate) ?? 9999));
       const catCounts   = Object.fromEntries(CATEGORIES.map(c => [c.id, items.filter(i => i.category === c.id).length]));
       const detailItem  = showDetail ? items.find(i => i.id === showDetail) : null;
+
+      // 실제 사용된 태그 (빈도순)
+      const tagCountMap = {};
+      items.forEach(i => (i.tags || []).forEach(t => { tagCountMap[t] = (tagCountMap[t] || 0) + 1; }));
+      const usedTags = Object.entries(tagCountMap).sort((a,b) => b[1]-a[1]).map(([t]) => t);
 
       const wrap = { minHeight: "100vh", background: "#0F1117", color: "#F0F0F0", fontFamily: "'Noto Sans KR', sans-serif", maxWidth: 430, margin: "0 auto", position: "relative", overflowX: "hidden" };
 
@@ -214,7 +223,7 @@
           </div>
 
           {/* ── Sort ── */}
-          <div style={{ padding: "0 20px 12px", display: "flex", gap: 8 }}>
+          <div style={{ padding: "0 20px 8px", display: "flex", gap: 8 }}>
             {SORT_OPTIONS.map(opt => (
               <button key={opt.value} onClick={() => setSortBy(opt.value)}
                 style={{ fontSize: 11, padding: "4px 10px", borderRadius: 10, border: "none", cursor: "pointer", background: sortBy === opt.value ? "rgba(255,255,255,0.2)" : "transparent", color: sortBy === opt.value ? "#fff" : "#666", fontWeight: sortBy === opt.value ? 700 : 400 }}>
@@ -222,6 +231,22 @@
               </button>
             ))}
           </div>
+
+          {/* ── Tag Filter ── */}
+          {usedTags.length > 0 && (
+            <div style={{ padding: "0 16px 12px", overflowX: "auto", display: "flex", gap: 7, scrollbarWidth: "none" }}>
+              <button onClick={() => setActiveTag(null)}
+                style={{ flexShrink: 0, padding: "5px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: activeTag === null ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)", color: activeTag === null ? "#fff" : "#666", whiteSpace: "nowrap" }}>
+                전체
+              </button>
+              {usedTags.map(tag => (
+                <button key={tag} onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                  style={{ flexShrink: 0, padding: "5px 14px", borderRadius: 20, border: `1px solid ${activeTag === tag ? "rgba(79,195,247,0.5)" : "transparent"}`, cursor: "pointer", fontSize: 12, fontWeight: 700, background: activeTag === tag ? "rgba(79,195,247,0.15)" : "rgba(255,255,255,0.06)", color: activeTag === tag ? "#4FC3F7" : "#888", whiteSpace: "nowrap" }}>
+                  #{tag} <span style={{ fontSize: 10, opacity: 0.7 }}>{tagCountMap[tag]}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* ── Items ── */}
           <div style={{ padding: "0 16px 100px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -250,6 +275,16 @@
                     <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
                       {item.expiryDate ? `유통기한 ${item.expiryDate}` : "유통기한 미입력"}
                     </div>
+                    {(item.tags || []).length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                        {item.tags.map(t => (
+                          <span key={t} onClick={e => { e.stopPropagation(); setActiveTag(activeTag === t ? null : t); }}
+                            style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8, background: activeTag === t ? "rgba(79,195,247,0.18)" : "rgba(255,255,255,0.08)", color: activeTag === t ? "#4FC3F7" : "#aaa", border: `1px solid ${activeTag === t ? "rgba(79,195,247,0.4)" : "transparent"}`, cursor: "pointer" }}>
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     <button className="qty-btn" onClick={e => { e.stopPropagation(); updateQty(item.id, -1); }}
@@ -286,6 +321,13 @@
                         <div>
                           <div style={{ fontSize: 20, fontWeight: 900 }}>{detailItem.name}</div>
                           <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{cat?.label}</div>
+                          {(detailItem.tags || []).length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                              {detailItem.tags.map(t => (
+                                <span key={t} style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 10, background: "rgba(79,195,247,0.12)", color: "#4FC3F7", border: "1px solid rgba(79,195,247,0.3)" }}>#{t}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div style={{ marginLeft: "auto" }}><ExpiryBadge days={days} /></div>
                       </div>
@@ -348,6 +390,54 @@
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* 태그 */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, color: "#888", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>태그 (선택)</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
+                    {PRESET_TAGS.map(tag => {
+                      const isOn = (form.tags || []).includes(tag);
+                      return (
+                        <button key={tag} onClick={() => {
+                          const cur = form.tags || [];
+                          setForm(f => ({ ...f, tags: isOn ? cur.filter(t => t !== tag) : [...cur, tag] }));
+                        }}
+                          style={{ padding: "5px 13px", borderRadius: 20, border: `1px solid ${isOn ? "rgba(79,195,247,0.55)" : "rgba(255,255,255,0.12)"}`, background: isOn ? "rgba(79,195,247,0.15)" : "rgba(255,255,255,0.05)", color: isOn ? "#4FC3F7" : "#888", fontSize: 12, fontWeight: isOn ? 700 : 500, cursor: "pointer" }}>
+                          {isOn ? "✓ " : ""}{tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* 직접 입력 */}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input id="customTagInput" placeholder="직접 입력 후 추가"
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          const v = e.target.value.trim().replace(/^#/, "");
+                          if (v && !(form.tags || []).includes(v)) setForm(f => ({ ...f, tags: [...(f.tags||[]), v] }));
+                          e.target.value = "";
+                        }
+                      }}
+                      style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "9px 12px", color: "#F0F0F0", fontSize: 13, outline: "none" }} />
+                    <button onClick={() => {
+                      const inp = document.getElementById("customTagInput");
+                      const v = inp.value.trim().replace(/^#/, "");
+                      if (v && !(form.tags || []).includes(v)) setForm(f => ({ ...f, tags: [...(f.tags||[]), v] }));
+                      inp.value = "";
+                    }} style={{ padding: "9px 14px", borderRadius: 10, border: "none", background: "rgba(79,195,247,0.15)", color: "#4FC3F7", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>추가</button>
+                  </div>
+                  {/* 선택된 커스텀 태그 표시 */}
+                  {(form.tags || []).filter(t => !PRESET_TAGS.includes(t)).length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                      {form.tags.filter(t => !PRESET_TAGS.includes(t)).map(t => (
+                        <span key={t} style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 12, background: "rgba(167,139,250,0.15)", color: "#A78BFA", border: "1px solid rgba(167,139,250,0.35)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          #{t}
+                          <span onClick={() => setForm(f => ({ ...f, tags: f.tags.filter(x => x !== t) }))} style={{ cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* 수량 + 단위 */}
