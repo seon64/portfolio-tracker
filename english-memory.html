@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="영어암기"/>
+  <title>영어 문장 암기</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    html,body{height:100%;font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;}
+    ::-webkit-scrollbar{display:none;}
+    input,textarea{font-family:'Noto Sans KR',sans-serif;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+    @keyframes pop{0%{transform:scale(1);}50%{transform:scale(1.1);}100%{transform:scale(1);}}
+    .card-press{transition:transform 0.12s ease;}
+    .card-press:active{transform:scale(0.97);}
+    .btn-press{transition:transform 0.1s ease;}
+    .btn-press:active{transform:scale(0.94);}
+    .tab-btn{transition:color 0.2s ease;}
+    .tag-chip{transition:all 0.15s ease;}
+    .tag-chip:active{transform:scale(0.93);}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState, useEffect, useRef} = React;
+
+const STORAGE_KEY = "eng_memory_v3";
+const THEME_KEY   = "eng_theme_v1";
+
+/* ── 추천 태그 목록 ── */
+const PRESET_TAGS = [
+  "일상","비즈니스","여행","감정","시제","관용구",
+  "면접","쇼핑","음식","건강","날씨","교통",
+  "문화","기술","환경","교육","스포츠","뉴스",
+];
+
+/* ── helpers ── */
+function load(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY))||[]; }catch{ return []; } }
+function save(d){ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(d)); }catch{} }
+function loadTheme(){ try{ return localStorage.getItem(THEME_KEY)||"dark"; }catch{ return "dark"; } }
+function saveTheme(t){ try{ localStorage.setItem(THEME_KEY,t); }catch{} }
+function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+/* ── 색상 팔레트 ── */
+const DARK={
+  bg:"#0D0D0F", bgSub:"#151518",
+  surface:"rgba(255,255,255,0.04)", surfaceHov:"rgba(167,139,250,0.08)",
+  border:"rgba(255,255,255,0.07)", borderAct:"rgba(167,139,250,0.3)",
+  text:"#F2F2F2", textSub:"#888", textMuted:"#555",
+  tabBg:"rgba(13,13,15,0.94)", tabBorder:"rgba(255,255,255,0.07)", tabInact:"#444",
+  accent:"#A78BFA", accentB:"#60A5FA",
+  inputBg:"rgba(255,255,255,0.05)", inputBord:"rgba(255,255,255,0.09)",
+  progressBg:"rgba(255,255,255,0.08)", modalBg:"#1A1A1F",
+  ansBg:"rgba(96,165,250,0.08)", ansBord:"rgba(96,165,250,0.25)",
+  reviewBg:"rgba(255,255,255,0.04)", reviewBord:"rgba(255,255,255,0.07)",
+  badgeBg:"rgba(255,255,255,0.07)", delBg:"rgba(239,68,68,0.12)",
+  saveDis:"rgba(255,255,255,0.05)", saveDisTxt:"#444",
+  exportBg:"rgba(74,222,128,0.1)", exportBord:"rgba(74,222,128,0.25)", exportClr:"#4ADE80",
+  headerGrad:"linear-gradient(180deg,#151518 0%,#0D0D0F 100%)",
+  shadow:"none",
+  tagPresetBg:"rgba(255,255,255,0.06)", tagPresetBord:"rgba(255,255,255,0.1)", tagPresetClr:"#aaa",
+  tagActiveBg:"rgba(167,139,250,0.18)", tagActiveBord:"rgba(167,139,250,0.4)", tagActiveClr:"#C4B5FD",
+  memoBg:"rgba(255,255,255,0.04)", memoPlaceholder:"#555",
+  filterScrollBg:"#0D0D0F",
+};
+const LIGHT={
+  bg:"#F4F4F8", bgSub:"#FFFFFF",
+  surface:"#FFFFFF", surfaceHov:"rgba(124,58,237,0.05)",
+  border:"rgba(0,0,0,0.08)", borderAct:"rgba(124,58,237,0.3)",
+  text:"#18182A", textSub:"#555", textMuted:"#9999AA",
+  tabBg:"rgba(255,255,255,0.95)", tabBorder:"rgba(0,0,0,0.08)", tabInact:"#AAAABC",
+  accent:"#7C3AED", accentB:"#2563EB",
+  inputBg:"#FFFFFF", inputBord:"rgba(0,0,0,0.09)",
+  progressBg:"rgba(0,0,0,0.08)", modalBg:"#FFFFFF",
+  ansBg:"rgba(37,99,235,0.06)", ansBord:"rgba(37,99,235,0.2)",
+  reviewBg:"#F9F9FC", reviewBord:"rgba(0,0,0,0.07)",
+  badgeBg:"rgba(0,0,0,0.06)", delBg:"rgba(239,68,68,0.08)",
+  saveDis:"rgba(0,0,0,0.05)", saveDisTxt:"#BBBBCC",
+  exportBg:"rgba(22,163,74,0.08)", exportBord:"rgba(22,163,74,0.22)", exportClr:"#16A34A",
+  headerGrad:"linear-gradient(180deg,#FFFFFF 0%,#F4F4F8 100%)",
+  shadow:"0 1px 4px rgba(0,0,0,0.07)",
+  tagPresetBg:"rgba(0,0,0,0.05)", tagPresetBord:"rgba(0,0,0,0.09)", tagPresetClr:"#666",
+  tagActiveBg:"rgba(124,58,237,0.1)", tagActiveBord:"rgba(124,58,237,0.35)", tagActiveClr:"#7C3AED",
+  memoBg:"rgba(0,0,0,0.03)", memoPlaceholder:"#bbb",
+  filterScrollBg:"#F4F4F8",
+};
+
+/* ── Excel 내보내기 ── */
+function exportToExcel(sentences){
+  if(!sentences.length){ alert("내보낼 문장이 없어요!"); return; }
+  const rows=sentences.map((s,i)=>({
+    "번호":i+1,"날짜":s.date,
+    "태그":(s.tags||[]).join(", "),
+    "한국어":s.korean,"영어(English)":s.english,
+    "메모":s.memo||""
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws["!cols"]=[{wch:6},{wch:12},{wch:20},{wch:36},{wch:48},{wch:30}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"영어문장");
+  XLSX.writeFile(wb,`영어암기_${new Date().toISOString().split("T")[0]}.xlsx`);
+}
+
+/* ── 아이콘 ── */
+const IBook=()=>(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>);
+const IPencil=()=>(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>);
+const IPlay=()=>(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>);
+const ISun=()=>(<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>);
+const IMoon=()=>(<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>);
+const IDown=()=>(<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>);
+const ITag=()=>(<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>);
+
+/* ── TagChip (재사용) ── */
+function TagChip({label, active, onClick, c, removable, small}){
+  const bg   = active ? c.tagActiveBg   : c.tagPresetBg;
+  const bord = active ? c.tagActiveBord : c.tagPresetBord;
+  const clr  = active ? c.tagActiveClr  : c.tagPresetClr;
+  return (
+    <button onClick={onClick} className="tag-chip"
+      style={{display:"inline-flex",alignItems:"center",gap:4,padding:small?"3px 9px":"5px 12px",
+        borderRadius:20,border:`1px solid ${bord}`,background:bg,color:clr,
+        fontSize:small?11:12,fontWeight:active?700:500,cursor:"pointer",whiteSpace:"nowrap",
+        fontFamily:"'Noto Sans KR',sans-serif"}}>
+      {label}
+      {removable && <span style={{fontSize:13,lineHeight:1,marginLeft:1}}>×</span>}
+    </button>
+  );
+}
+
+/* ════════════════════════════════════════
+   App
+════════════════════════════════════════ */
+function App(){
+  const [tab,       setTab]       = useState("list");
+  const [sentences, setSentences] = useState(load);
+  const [theme,     setTheme]     = useState(loadTheme);
+  const c = theme==="dark" ? DARK : LIGHT;
+  const todayKey   = new Date().toISOString().split("T")[0];
+  const todayCount = sentences.filter(s=>s.date===todayKey).length;
+
+  useEffect(()=>{ document.body.style.background=c.bg; },[theme]);
+
+  const toggleTheme=()=>{ const n=theme==="dark"?"light":"dark"; setTheme(n); saveTheme(n); };
+  const addSentences=items=>{ const u=[...sentences,...items]; setSentences(u); save(u); };
+  const deleteSentence=id=>{ const u=sentences.filter(s=>s.id!==id); setSentences(u); save(u); };
+
+  return (
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:c.bg,color:c.text,transition:"background 0.25s,color 0.25s"}}>
+      <Header tab={tab} todayCount={todayCount} total={sentences.length}
+        c={c} theme={theme} onToggle={toggleTheme}
+        onExport={()=>exportToExcel(sentences)} hasData={sentences.length>0}/>
+      <div style={{flex:1,overflowY:"auto",paddingBottom:90}}>
+        {tab==="list" && <ListView sentences={sentences} onDelete={deleteSentence} todayKey={todayKey} c={c}/>}
+        {tab==="add"  && <AddView  todayCount={todayCount} onAdd={addSentences} onDone={()=>setTab("list")} c={c}/>}
+        {tab==="quiz" && <QuizView sentences={sentences} c={c}/>}
+      </div>
+      <BottomTabs tab={tab} setTab={setTab} c={c}/>
+    </div>
+  );
+}
+
+/* ── Header ── */
+function Header({tab,todayCount,total,c,theme,onToggle,onExport,hasData}){
+  const titles={list:"📚 내 문장 목록",add:"✏️ 오늘의 문장",quiz:"🎯 문제 풀기"};
+  return (
+    <div style={{padding:"54px 20px 14px",background:c.headerGrad,transition:"background 0.25s"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div style={{fontSize:11,letterSpacing:3,color:c.textMuted,textTransform:"uppercase",fontFamily:"DM Serif Display,serif"}}>English Memory</div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {tab==="list"&&hasData&&(
+            <button onClick={onExport} className="btn-press"
+              style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:20,
+                border:`1px solid ${c.exportBord}`,background:c.exportBg,color:c.exportClr,
+                fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+              <IDown/> 엑셀 저장
+            </button>
+          )}
+          <button onClick={onToggle} className="btn-press"
+            style={{width:34,height:34,borderRadius:17,border:`1px solid ${c.border}`,background:c.surface,
+              display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:c.textSub}}>
+            {theme==="dark"?<ISun/>:<IMoon/>}
+          </button>
+        </div>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+        <div style={{fontSize:22,fontWeight:900,letterSpacing:-0.5}}>{titles[tab]}</div>
+        {tab==="list"&&(
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:11,color:c.textMuted}}>오늘 <span style={{color:c.accent,fontWeight:700}}>{todayCount}</span>문장</div>
+            <div style={{fontSize:11,color:c.textMuted}}>전체 <span style={{color:c.accentB,fontWeight:700}}>{total}</span>문장</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════
+   ListView  (태그 필터 포함)
+════════════════════════════════════════ */
+function ListView({sentences,onDelete,todayKey,c}){
+  const [expanded,   setExpanded]   = useState(null);
+  const [delConfirm, setDelConfirm] = useState(null);
+  const [activeTag,  setActiveTag]  = useState(null); // null = 전체
+
+  /* 전체 문장에서 사용된 태그 추출 (사용 빈도 순) */
+  const allTagCounts = {};
+  sentences.forEach(s=>(s.tags||[]).forEach(t=>{ allTagCounts[t]=(allTagCounts[t]||0)+1; }));
+  const usedTags = Object.entries(allTagCounts).sort((a,b)=>b[1]-a[1]).map(([t])=>t);
+
+  /* 필터 적용 */
+  const filtered = activeTag ? sentences.filter(s=>(s.tags||[]).includes(activeTag)) : sentences;
+
+  /* 날짜 그룹 */
+  const groups={};
+  [...filtered].reverse().forEach(s=>{ if(!groups[s.date]) groups[s.date]=[]; groups[s.date].push(s); });
+
+  if(!sentences.length) return (
+    <div style={{textAlign:"center",padding:"80px 20px"}}>
+      <div style={{fontSize:48,marginBottom:16}}>📝</div>
+      <div style={{fontSize:16,fontWeight:700,color:c.textSub,marginBottom:8}}>아직 문장이 없어요</div>
+      <div style={{fontSize:13,color:c.textMuted}}>✏️ 탭에서 오늘의 문장을 입력해보세요</div>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* ── 태그 필터 스크롤바 ── */}
+      {usedTags.length>0 && (
+        <div style={{padding:"8px 0 12px",overflowX:"auto",display:"flex",gap:7,
+          paddingLeft:16,paddingRight:16,scrollbarWidth:"none"}}>
+          {/* 전체 버튼 */}
+          <TagChip label="전체" active={activeTag===null} onClick={()=>setActiveTag(null)} c={c}/>
+          {usedTags.map(tag=>(
+            <TagChip key={tag} label={`#${tag}`} active={activeTag===tag}
+              onClick={()=>setActiveTag(activeTag===tag?null:tag)} c={c}/>
+          ))}
+        </div>
+      )}
+
+      {/* 필터 결과 없음 */}
+      {filtered.length===0 && (
+        <div style={{textAlign:"center",padding:"60px 20px"}}>
+          <div style={{fontSize:36,marginBottom:12}}>🔍</div>
+          <div style={{fontSize:14,color:c.textSub}}>
+            <span style={{color:c.accent,fontWeight:700}}>#{activeTag}</span> 태그 문장이 없어요
+          </div>
+        </div>
+      )}
+
+      {/* ── 카드 목록 ── */}
+      <div style={{padding:"0 16px"}}>
+        {Object.entries(groups).map(([date,items])=>(
+          <div key={date} style={{marginBottom:24}}>
+            <div style={{fontSize:11,letterSpacing:2,textTransform:"uppercase",
+              marginBottom:10,paddingLeft:4,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{color:date===todayKey?c.accent:c.textMuted,fontWeight:date===todayKey?700:400}}>
+                {date===todayKey?"오늘 · ":""}{date}
+              </span>
+              <span style={{fontSize:10,background:c.badgeBg,borderRadius:6,
+                padding:"2px 7px",color:c.textMuted}}>{items.length}문장</span>
+            </div>
+
+            {items.map((s,idx)=>(
+              <div key={s.id} className="card-press"
+                onClick={()=>setExpanded(expanded===s.id?null:s.id)}
+                style={{background:expanded===s.id?c.surfaceHov:c.surface,
+                  border:`1px solid ${expanded===s.id?c.borderAct:c.border}`,
+                  borderRadius:14,padding:"14px 16px",marginBottom:8,cursor:"pointer",
+                  animation:`fadeUp 0.3s ${idx*0.04}s both`,
+                  boxShadow:c.shadow,transition:"background 0.15s,border-color 0.15s"}}>
+
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    {/* 태그 뱃지 */}
+                    {(s.tags||[]).length>0&&(
+                      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:6}}>
+                        {s.tags.map(t=>(
+                          <span key={t}
+                            onClick={e=>{e.stopPropagation();setActiveTag(activeTag===t?null:t);}}
+                            style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:10,
+                              background:activeTag===t?c.tagActiveBg:c.tagPresetBg,
+                              color:activeTag===t?c.tagActiveClr:c.tagPresetClr,
+                              border:`1px solid ${activeTag===t?c.tagActiveBord:c.tagPresetBord}`,
+                              cursor:"pointer",display:"inline-flex",alignItems:"center",gap:3}}>
+                            <ITag/>{t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{fontSize:13,color:c.textSub,marginBottom:5,lineHeight:1.6}}>{s.korean}</div>
+                    {expanded===s.id
+                      ? <div style={{fontSize:15,fontWeight:700,color:c.accentB,lineHeight:1.65,fontStyle:"italic"}}>{s.english}</div>
+                      : <div style={{fontSize:13,color:c.textMuted,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>···</div>
+                    }
+                    {/* 메모 */}
+                    {expanded===s.id && s.memo && (
+                      <div style={{marginTop:10,padding:"9px 12px",borderRadius:10,
+                        background:c.memoBg||c.badgeBg,border:`1px solid ${c.border}`,
+                        fontSize:12,color:c.textSub,lineHeight:1.6}}>
+                        📌 {s.memo}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
+                    <div style={{fontSize:11,color:c.textMuted}}>#{sentences.indexOf(s)+1}</div>
+                    {expanded===s.id&&(
+                      <button onClick={e=>{e.stopPropagation();setDelConfirm(s.id);}} className="btn-press"
+                        style={{fontSize:11,color:"#EF4444",background:c.delBg,border:"none",
+                          borderRadius:8,padding:"4px 9px",cursor:"pointer",fontWeight:700}}>삭제</button>
+                    )}
+                  </div>
+                </div>
+
+                {expanded===s.id&&(
+                  <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${c.border}`,
+                    fontSize:11,color:c.textMuted}}>탭해서 닫기</div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* 삭제 확인 모달 */}
+      {delConfirm&&(
+        <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",alignItems:"center",
+          justifyContent:"center",padding:20,animation:"fadeIn 0.15s ease"}}>
+          <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.5)"}} onClick={()=>setDelConfirm(null)}/>
+          <div onClick={e=>e.stopPropagation()}
+            style={{position:"relative",background:c.modalBg,borderRadius:20,padding:24,
+              width:"100%",maxWidth:310,textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+            <div style={{fontSize:32,marginBottom:12}}>🗑</div>
+            <div style={{fontWeight:900,fontSize:16,marginBottom:8,color:c.text}}>삭제할까요?</div>
+            <div style={{color:c.textSub,fontSize:13,marginBottom:20}}>이 문장이 완전히 삭제돼요</div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setDelConfirm(null)} className="btn-press"
+                style={{flex:1,padding:"13px",borderRadius:12,border:"none",background:c.badgeBg,
+                  color:c.text,fontSize:14,fontWeight:700,cursor:"pointer"}}>취소</button>
+              <button onClick={()=>{onDelete(delConfirm);setDelConfirm(null);setExpanded(null);}} className="btn-press"
+                style={{flex:1,padding:"13px",borderRadius:12,border:"none",background:"#EF4444",
+                  color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}}>삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════
+   AddView  (태그 + 메모 포함)
+════════════════════════════════════════ */
+function SlotForm({idx, totalIdx, slot, onChange, c, allUsedTags}){
+  const [customTag, setCustomTag] = useState("");
+
+  function toggleTag(tag){
+    const cur = slot.tags||[];
+    const next = cur.includes(tag) ? cur.filter(t=>t!==tag) : [...cur, tag];
+    onChange({...slot, tags:next});
+  }
+  function addCustomTag(){
+    const t = customTag.trim().replace(/^#/,"");
+    if(!t) return;
+    const cur = slot.tags||[];
+    if(!cur.includes(t)) onChange({...slot, tags:[...cur,t]});
+    setCustomTag("");
+  }
+
+  /* 추천: preset + 기존에 쓴 태그, 중복 제거 */
+  const suggested = [...new Set([...allUsedTags, ...PRESET_TAGS])].slice(0,24);
+
+  return (
+    <div style={{marginBottom:20,animation:`fadeUp 0.3s ${idx*0.1}s both`}}>
+      <div style={{fontSize:11,color:c.textMuted,letterSpacing:2,textTransform:"uppercase",marginBottom:10,paddingLeft:2}}>
+        문장 {totalIdx}
+      </div>
+      <div style={{background:c.inputBg,border:`1px solid ${c.inputBord}`,borderRadius:16,overflow:"hidden",boxShadow:c.shadow}}>
+        {/* 한국어 */}
+        <div style={{padding:"12px 16px",borderBottom:`1px solid ${c.border}`}}>
+          <div style={{fontSize:10,color:c.textMuted,marginBottom:6,letterSpacing:1}}>🇰🇷 한국어</div>
+          <textarea value={slot.korean} onChange={e=>onChange({...slot,korean:e.target.value})}
+            placeholder="한국어 문장을 입력하세요" rows={2}
+            style={{width:"100%",background:"transparent",border:"none",outline:"none",
+              color:c.text,fontSize:14,resize:"none",lineHeight:1.7}}/>
+        </div>
+        {/* 영어 */}
+        <div style={{padding:"12px 16px",borderBottom:`1px solid ${c.border}`}}>
+          <div style={{fontSize:10,color:c.textMuted,marginBottom:6,letterSpacing:1}}>🇺🇸 English</div>
+          <textarea value={slot.english} onChange={e=>onChange({...slot,english:e.target.value})}
+            placeholder="Enter the English sentence" rows={2}
+            style={{width:"100%",background:"transparent",border:"none",outline:"none",
+              color:c.accentB,fontSize:14,fontStyle:"italic",resize:"none",lineHeight:1.7}}/>
+        </div>
+
+        {/* 태그 */}
+        <div style={{padding:"12px 16px",borderBottom:`1px solid ${c.border}`}}>
+          <div style={{fontSize:10,color:c.textMuted,marginBottom:8,letterSpacing:1,display:"flex",alignItems:"center",gap:4}}>
+            <ITag/> 태그
+          </div>
+          {/* 선택된 태그 */}
+          {(slot.tags||[]).length>0&&(
+            <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
+              {slot.tags.map(t=>(
+                <TagChip key={t} label={`#${t}`} active={true} removable={true}
+                  onClick={()=>toggleTag(t)} c={c}/>
+              ))}
+            </div>
+          )}
+          {/* 추천 태그 */}
+          <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
+            {suggested.filter(t=>!(slot.tags||[]).includes(t)).map(t=>(
+              <TagChip key={t} label={t} active={false} small={true}
+                onClick={()=>toggleTag(t)} c={c}/>
+            ))}
+          </div>
+          {/* 직접 입력 */}
+          <div style={{display:"flex",gap:6}}>
+            <input value={customTag} onChange={e=>setCustomTag(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"||e.key===","){ e.preventDefault(); addCustomTag(); }}}
+              placeholder="직접 입력 후 Enter"
+              style={{flex:1,background:"transparent",border:`1px solid ${c.inputBord}`,
+                borderRadius:10,padding:"7px 12px",color:c.text,fontSize:13,outline:"none"}}/>
+            <button onClick={addCustomTag} className="btn-press"
+              style={{padding:"7px 14px",borderRadius:10,border:"none",
+                background:c.tagActiveBg,color:c.tagActiveClr,fontSize:13,fontWeight:700,cursor:"pointer"}}>추가</button>
+          </div>
+        </div>
+
+        {/* 메모 */}
+        <div style={{padding:"12px 16px"}}>
+          <div style={{fontSize:10,color:c.textMuted,marginBottom:6,letterSpacing:1}}>📌 메모 (선택)</div>
+          <textarea value={slot.memo||""} onChange={e=>onChange({...slot,memo:e.target.value})}
+            placeholder="예문 출처, 복습 포인트 등 자유롭게..." rows={2}
+            style={{width:"100%",background:"transparent",border:"none",outline:"none",
+              color:c.textSub,fontSize:13,resize:"none",lineHeight:1.7}}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddView({todayCount,onAdd,onDone,c,sentences}){
+  const MAX=3, remaining=Math.max(0,MAX-todayCount);
+  const emptySlot=()=>({korean:"",english:"",tags:[],memo:""});
+  const [slots,setSlots]=useState(()=>Array.from({length:Math.min(remaining,MAX)},emptySlot));
+  const [saved,setSaved]=useState(false);
+
+  /* 기존 문장에서 이미 쓴 태그 수집 */
+  const allUsedTags=[...new Set((sentences||[]).flatMap(s=>s.tags||[]))];
+
+  function updateSlot(idx,val){ setSlots(p=>p.map((s,i)=>i===idx?val:s)); }
+  function handleSave(){
+    const valid=slots.filter(s=>s.korean.trim()&&s.english.trim());
+    if(!valid.length) return;
+    const date=new Date().toISOString().split("T")[0];
+    onAdd(valid.map(s=>({id:Date.now()+Math.random(),date,
+      korean:s.korean.trim(),english:s.english.trim(),
+      tags:s.tags||[],memo:(s.memo||"").trim()})));
+    setSaved(true); setTimeout(()=>onDone(),900);
+  }
+  const canSave=slots.some(s=>s.korean.trim()&&s.english.trim());
+
+  if(remaining===0) return (
+    <div style={{textAlign:"center",padding:"80px 20px"}}>
+      <div style={{fontSize:48,marginBottom:16}}>🎉</div>
+      <div style={{fontSize:16,fontWeight:700,color:c.accent,marginBottom:8}}>오늘 할당량 완료!</div>
+      <div style={{fontSize:13,color:c.textSub}}>오늘 {MAX}문장을 모두 입력했어요<br/>내일 또 만나요 😊</div>
+    </div>
+  );
+  if(saved) return (
+    <div style={{textAlign:"center",padding:"80px 20px"}}>
+      <div style={{fontSize:48,marginBottom:16,animation:"pop 0.4s ease"}}>✅</div>
+      <div style={{fontSize:16,fontWeight:700,color:c.accentB}}>저장됐어요!</div>
+    </div>
+  );
+
+  return (
+    <div style={{padding:"8px 16px 0"}}>
+      {/* 오늘 현황 */}
+      <div style={{background:c.surfaceHov,border:`1px solid ${c.borderAct}`,borderRadius:14,
+        padding:"12px 16px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:13,color:c.accent,fontWeight:700}}>오늘 입력 현황</div>
+        <div style={{display:"flex",gap:7}}>
+          {Array.from({length:MAX}).map((_,i)=>(
+            <div key={i} style={{width:10,height:10,borderRadius:"50%",
+              background:i<todayCount?c.accent:c.progressBg,transition:"background 0.3s"}}/>
+          ))}
+        </div>
+      </div>
+
+      {slots.map((slot,idx)=>(
+        <SlotForm key={idx} idx={idx} totalIdx={todayCount+idx+1}
+          slot={slot} onChange={val=>updateSlot(idx,val)} c={c} allUsedTags={allUsedTags}/>
+      ))}
+
+      <button onClick={handleSave} className="btn-press"
+        style={{width:"100%",padding:"16px",borderRadius:16,border:"none",
+          background:canSave?`linear-gradient(135deg,${c.accent},${c.accentB})`:c.saveDis,
+          color:canSave?"#fff":c.saveDisTxt,fontSize:16,fontWeight:900,
+          cursor:canSave?"pointer":"default",letterSpacing:0.5,marginTop:4,marginBottom:20,
+          transition:"background 0.2s"}}>
+        저장하기
+      </button>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════
+   QuizView
+════════════════════════════════════════ */
+function QuizView({sentences,c}){
+  const QUIZ_COUNT=5;
+  const [quiz,     setQuiz]    =useState(null);
+  const [done,     setDone]    =useState(false);
+  const [current,  setCurrent] =useState(0);
+  const [revealed, setRevealed]=useState(false);
+  const [score,    setScore]   =useState(0);
+  const [answered, setAnswered]=useState(false);
+  const [filterTag,setFilterTag]=useState(null);
+
+  const usedTags=[...new Set(sentences.flatMap(s=>s.tags||[]))];
+  const pool = filterTag ? sentences.filter(s=>(s.tags||[]).includes(filterTag)) : sentences;
+
+  function startQuiz(){
+    if(!pool.length) return;
+    setQuiz(shuffle(pool).slice(0,Math.min(QUIZ_COUNT,pool.length)));
+    setCurrent(0);setRevealed(false);setDone(false);setScore(0);setAnswered(false);
+  }
+  useEffect(()=>{ startQuiz(); },[filterTag]);
+
+  if(!sentences.length) return (
+    <div style={{textAlign:"center",padding:"80px 20px"}}>
+      <div style={{fontSize:48,marginBottom:16}}>🤔</div>
+      <div style={{fontSize:16,fontWeight:700,color:c.textSub,marginBottom:8}}>문장이 없어요</div>
+      <div style={{fontSize:13,color:c.textMuted}}>먼저 ✏️ 탭에서 문장을 입력해주세요</div>
+    </div>
+  );
+  if(!quiz) return null;
+
+  /* 결과 화면 */
+  if(done){
+    const pct=Math.round((score/quiz.length)*100);
+    const emoji=pct===100?"🏆":pct>=80?"🌟":pct>=60?"💪":"📚";
+    return (
+      <div style={{padding:"36px 20px",textAlign:"center",animation:"fadeUp 0.4s ease"}}>
+        <div style={{fontSize:60,marginBottom:12}}>{emoji}</div>
+        <div style={{fontSize:34,fontWeight:900,marginBottom:4,
+          background:`linear-gradient(135deg,${c.accent},${c.accentB})`,
+          WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{score} / {quiz.length}</div>
+        <div style={{fontSize:14,color:c.textSub,marginBottom:28}}>정답률 {pct}%</div>
+        <div style={{textAlign:"left",marginBottom:20}}>
+          <div style={{fontSize:12,color:c.textMuted,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>퀴즈 복습</div>
+          {quiz.map(s=>(
+            <div key={s.id} style={{background:c.reviewBg,border:`1px solid ${c.reviewBord}`,
+              borderRadius:12,padding:"12px 14px",marginBottom:8,boxShadow:c.shadow}}>
+              {(s.tags||[]).length>0&&(
+                <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:6}}>
+                  {s.tags.map(t=>(
+                    <span key={t} style={{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:8,
+                      background:c.tagPresetBg,color:c.tagPresetClr,border:`1px solid ${c.tagPresetBord}`}}>#{t}</span>
+                  ))}
+                </div>
+              )}
+              <div style={{fontSize:12,color:c.textSub,marginBottom:4}}>{s.korean}</div>
+              <div style={{fontSize:14,fontWeight:700,color:c.accentB,fontStyle:"italic"}}>{s.english}</div>
+              {s.memo&&<div style={{fontSize:11,color:c.textMuted,marginTop:5}}>📌 {s.memo}</div>}
+            </div>
+          ))}
+        </div>
+        <button onClick={startQuiz} className="btn-press"
+          style={{width:"100%",padding:"16px",borderRadius:16,border:"none",
+            background:`linear-gradient(135deg,${c.accent},${c.accentB})`,
+            color:"#fff",fontSize:16,fontWeight:900,cursor:"pointer",letterSpacing:0.5}}>
+          🔄 다시 풀기
+        </button>
+      </div>
+    );
+  }
+
+  const q=quiz[current];
+  function handleAnswer(ok){ if(answered) return; setAnswered(true); if(ok) setScore(s=>s+1); }
+  function next(){ if(current+1>=quiz.length){setDone(true);return;} setCurrent(n=>n+1);setRevealed(false);setAnswered(false); }
+
+  return (
+    <div style={{padding:"8px 16px 0"}}>
+      {/* 태그 필터 (퀴즈용) */}
+      {usedTags.length>0&&(
+        <div style={{overflowX:"auto",display:"flex",gap:7,marginBottom:16,scrollbarWidth:"none"}}>
+          <TagChip label="전체" active={filterTag===null} onClick={()=>setFilterTag(null)} c={c} small/>
+          {usedTags.map(t=>(
+            <TagChip key={t} label={`#${t}`} active={filterTag===t}
+              onClick={()=>setFilterTag(filterTag===t?null:t)} c={c} small/>
+          ))}
+        </div>
+      )}
+
+      {/* 진행 바 */}
+      <div style={{display:"flex",gap:5,marginBottom:16}}>
+        {quiz.map((_,i)=>(
+          <div key={i} style={{flex:1,height:4,borderRadius:2,
+            background:i<current?c.accent:i===current?`linear-gradient(90deg,${c.accent},${c.accentB})`:c.progressBg,
+            transition:"all 0.3s"}}/>
+        ))}
+      </div>
+      <div style={{fontSize:11,color:c.textMuted,textAlign:"right",marginBottom:14,letterSpacing:1}}>
+        {current+1} / {quiz.length} · 점수 {score}
+        {filterTag&&<span style={{color:c.accent,marginLeft:6}}>#{filterTag}</span>}
+      </div>
+
+      {/* 문제 카드 */}
+      <div key={current} style={{background:c.surface,border:`1px solid ${c.border}`,borderRadius:20,
+        padding:"28px 20px",marginBottom:18,animation:"fadeUp 0.3s ease",minHeight:160,
+        display:"flex",flexDirection:"column",justifyContent:"center",boxShadow:c.shadow}}>
+        {(q.tags||[]).length>0&&(
+          <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+            {q.tags.map(t=>(
+              <span key={t} style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:8,
+                background:c.tagPresetBg,color:c.tagPresetClr,border:`1px solid ${c.tagPresetBord}`}}>#{t}</span>
+            ))}
+          </div>
+        )}
+        <div style={{fontSize:11,color:c.accent,letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>한국어 → 영어로</div>
+        <div style={{fontSize:18,fontWeight:700,lineHeight:1.75,color:c.text}}>{q.korean}</div>
+      </div>
+
+      {!revealed?(
+        <button onClick={()=>setRevealed(true)} className="btn-press"
+          style={{width:"100%",padding:"16px",borderRadius:16,border:`2px dashed ${c.ansBord}`,
+            background:"transparent",color:c.accentB,fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:12}}>
+          👁 정답 보기
+        </button>
+      ):(
+        <div style={{animation:"fadeUp 0.3s ease"}}>
+          <div style={{background:c.ansBg,border:`1px solid ${c.ansBord}`,borderRadius:16,padding:"20px",marginBottom:14}}>
+            <div style={{fontSize:11,color:c.accentB,letterSpacing:2,marginBottom:10}}>ANSWER</div>
+            <div style={{fontSize:17,fontWeight:700,color:c.accentB,fontStyle:"italic",lineHeight:1.75}}>{q.english}</div>
+            {q.memo&&<div style={{fontSize:12,color:c.textMuted,marginTop:10}}>📌 {q.memo}</div>}
+          </div>
+
+          {!answered?(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <button onClick={()=>handleAnswer(false)} className="btn-press"
+                style={{padding:"14px",borderRadius:14,border:"none",background:"rgba(239,68,68,0.1)",
+                  color:"#EF4444",fontSize:14,fontWeight:700,cursor:"pointer"}}>❌ 틀렸어요</button>
+              <button onClick={()=>handleAnswer(true)} className="btn-press"
+                style={{padding:"14px",borderRadius:14,border:"none",background:"rgba(22,163,74,0.1)",
+                  color:"#16A34A",fontSize:14,fontWeight:700,cursor:"pointer"}}>✅ 맞았어요</button>
+            </div>
+          ):(
+            <div style={{marginBottom:12,padding:"8px 0",textAlign:"center",fontSize:13,color:c.textMuted}}>
+              {current+1<quiz.length?"다음 문제로 넘어가세요":"퀴즈가 끝났어요!"}
+            </div>
+          )}
+
+          <button onClick={next} className="btn-press"
+            style={{width:"100%",padding:"16px",borderRadius:16,border:"none",
+              background:answered?`linear-gradient(135deg,${c.accent},${c.accentB})`:c.saveDis,
+              color:answered?"#fff":c.saveDisTxt,fontSize:16,fontWeight:900,
+              cursor:answered?"pointer":"default",letterSpacing:0.5}}>
+            {current+1>=quiz.length?"결과 보기 🎯":"다음 문제 →"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── BottomTabs ── */
+function BottomTabs({tab,setTab,c}){
+  const tabs=[{id:"list",label:"목록",Icon:IBook},{id:"add",label:"입력",Icon:IPencil},{id:"quiz",label:"문제풀기",Icon:IPlay}];
+  return (
+    <div style={{position:"fixed",bottom:0,left:0,right:0,background:c.tabBg,backdropFilter:"blur(16px)",
+      borderTop:`1px solid ${c.tabBorder}`,display:"flex",padding:"8px 0 28px",zIndex:100,
+      transition:"background 0.25s,border-color 0.25s"}}>
+      {tabs.map(({id,label,Icon})=>(
+        <button key={id} onClick={()=>setTab(id)} className="tab-btn"
+          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+            background:"none",border:"none",cursor:"pointer",padding:"8px 0",
+            color:tab===id?c.accent:c.tabInact}}>
+          <Icon/>
+          <span style={{fontSize:10,fontWeight:tab===id?700:400,letterSpacing:0.5}}>{label}</span>
+          {tab===id&&<div style={{width:20,height:2,background:`linear-gradient(90deg,${c.accent},${c.accentB})`,borderRadius:1}}/>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ── AddView에 sentences prop 전달 패치 ── */
+function AppRoot(){
+  const [tab,       setTab]       = useState("list");
+  const [sentences, setSentences] = useState(load);
+  const [theme,     setTheme]     = useState(loadTheme);
+  const c = theme==="dark" ? DARK : LIGHT;
+  const todayKey   = new Date().toISOString().split("T")[0];
+  const todayCount = sentences.filter(s=>s.date===todayKey).length;
+
+  useEffect(()=>{ document.body.style.background=c.bg; },[theme]);
+
+  const toggleTheme=()=>{ const n=theme==="dark"?"light":"dark"; setTheme(n); saveTheme(n); };
+  const addSentences=items=>{ const u=[...sentences,...items]; setSentences(u); save(u); };
+  const deleteSentence=id=>{ const u=sentences.filter(s=>s.id!==id); setSentences(u); save(u); };
+
+  return (
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:c.bg,color:c.text,transition:"background 0.25s,color 0.25s"}}>
+      <Header tab={tab} todayCount={todayCount} total={sentences.length}
+        c={c} theme={theme} onToggle={toggleTheme}
+        onExport={()=>exportToExcel(sentences)} hasData={sentences.length>0}/>
+      <div style={{flex:1,overflowY:"auto",paddingBottom:90}}>
+        {tab==="list" && <ListView sentences={sentences} onDelete={deleteSentence} todayKey={todayKey} c={c}/>}
+        {tab==="add"  && <AddView  todayCount={todayCount} onAdd={addSentences} onDone={()=>setTab("list")} c={c} sentences={sentences}/>}
+        {tab==="quiz" && <QuizView sentences={sentences} c={c}/>}
+      </div>
+      <BottomTabs tab={tab} setTab={setTab} c={c}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<AppRoot/>);
+</script>
+</body>
+</html>
