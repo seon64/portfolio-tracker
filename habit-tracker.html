@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Habit Tracker × Notion</title>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e10;
+    --surface: #18181c;
+    --surface2: #222228;
+    --border: #2e2e38;
+    --accent: #c8f564;
+    --accent2: #7b61ff;
+    --text: #f0f0f0;
+    --muted: #888;
+    --danger: #ff6b6b;
+    --success: #c8f564;
+    --radius: 18px;
+    --font-mono: 'Space Mono', monospace;
+    --font-body: 'Gowun Dodum', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100dvh;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 32px);
+  }
+
+  /* ── SETUP SCREEN ── */
+  .setup-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 24px;
+    overflow-y: auto;
+  }
+  .setup-overlay.hidden { display: none; }
+
+  .setup-logo {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .setup-title {
+    font-family: var(--font-mono);
+    font-size: clamp(26px, 6vw, 42px);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .setup-title span { color: var(--accent); }
+
+  .setup-sub {
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 40px;
+    line-height: 1.6;
+  }
+
+  .step-card {
+    width: 100%; max-width: 480px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .step-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .step-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .step-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 12px;
+  }
+  .step-desc a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+  }
+  .code-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    word-break: break-all;
+    line-height: 1.8;
+    margin-top: 10px;
+  }
+  .code-block .key { color: var(--muted); }
+  .code-block .val { color: #7dd3fc; }
+
+  .input-group { margin-top: 12px; }
+  .input-label {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .input-field {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-field:focus { border-color: var(--accent); }
+  .input-field::placeholder { color: var(--border); }
+
+  .connect-btn {
+    width: 100%; max-width: 480px;
+    background: var(--accent);
+    color: #0e0e10;
+    border: none;
+    border-radius: var(--radius);
+    padding: 18px;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .connect-btn:active { transform: scale(0.98); opacity: 0.85; }
+
+  .privacy-note {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 20px;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+  .privacy-note strong { color: var(--accent); }
+
+  /* ── NOTION DB SCHEMA HINT ── */
+  .schema-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+  .schema-table th {
+    text-align: left;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .schema-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .schema-table td .type {
+    background: var(--surface2);
+    border-radius: 5px;
+    padding: 1px 7px;
+    font-size: 11px;
+    color: var(--accent2);
+    font-family: var(--font-mono);
+  }
+
+  /* ── MAIN APP ── */
+  .app { display: none; flex-direction: column; gap: 20px; padding-top: 12px; }
+  .app.visible { display: flex; }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+  }
+  .app-brand {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+  .settings-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .settings-btn:active { color: var(--accent); border-color: var(--accent); }
+
+  .date-strip {
+    font-family: var(--font-mono);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .date-strip .date-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  /* Progress ring */
+  .progress-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .ring-wrap { position: relative; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+  .ring-fill {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1);
+  }
+  .ring-label {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .ring-pct {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .ring-sub { font-size: 10px; color: var(--muted); }
+  .progress-info { flex: 1; }
+  .progress-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .progress-msg { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  /* Habit list */
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+  .habits-list { display: flex; flex-direction: column; gap: 10px; }
+  .habit-item {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.1s;
+    -webkit-user-select: none; user-select: none;
+  }
+  .habit-item:active { transform: scale(0.98); }
+  .habit-item.done {
+    border-color: var(--accent);
+    background: rgba(200, 245, 100, 0.06);
+  }
+  .habit-check {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+  .habit-item.done .habit-check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .habit-item.done .habit-check::after { content: '✓'; color: #0e0e10; font-weight: 700; font-size: 14px; }
+  .habit-info { flex: 1; }
+  .habit-name { font-size: 15px; font-weight: 500; }
+  .habit-item.done .habit-name { text-decoration: line-through; color: var(--muted); }
+  .habit-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .habit-streak {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent2);
+    background: rgba(123,97,255,0.12);
+    border-radius: 8px;
+    padding: 4px 10px;
+    flex-shrink: 0;
+  }
+
+  /* Week heatmap */
+  .week-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .week-day {
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .week-day-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .week-dot {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    background: var(--surface2);
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    color: var(--muted);
+    transition: background 0.2s;
+  }
+  .week-dot.today { border: 1.5px solid var(--accent); }
+  .week-dot.full { background: var(--accent); color: #0e0e10; font-weight: 700; }
+  .week-dot.partial { background: rgba(200,245,100,0.25); color: var(--accent); }
+
+  /* Refresh button */
+  .refresh-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .refresh-btn {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.1s;
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px;
+  }
+  .refresh-btn:active { transform: scale(0.97); border-color: var(--accent); }
+  .refresh-icon { font-size: 16px; }
+
+  .notion-link-btn {
+    background: rgba(123,97,255,0.15);
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+  }
+
+  /* Loading state */
+  .loading-spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 20px) + 20px);
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 12px 22px;
+    font-size: 13px;
+    color: var(--text);
+    transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
+    opacity: 0;
+    z-index: 200;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Error banner */
+  .error-banner {
+    background: rgba(255,107,107,0.1);
+    border: 1px solid var(--danger);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--danger);
+    display: none;
+    line-height: 1.6;
+  }
+  .error-banner.visible { display: block; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     SETUP OVERLAY
+══════════════════════════════════ -->
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-logo">Habit × Notion</div>
+  <h1 class="setup-title">연결 설정<span>.</span></h1>
+  <p class="setup-sub">노션 DB와 연결해서<br>습관을 추적해 보세요</p>
+
+  <!-- STEP 1: Notion Integration -->
+  <div class="step-card">
+    <div class="step-num">STEP 01</div>
+    <div class="step-title">노션 Integration 만들기</div>
+    <div class="step-desc">
+      <a href="https://www.notion.so/my-integrations" target="_blank">notion.so/my-integrations</a> 에서
+      새 Integration을 만드세요.<br>
+      권한은 <strong style="color:var(--text)">Read content</strong>와 <strong style="color:var(--text)">Update content</strong>를 체크해주세요.<br><br>
+      발급된 <strong style="color:var(--text)">Internal Integration Token</strong>을 복사하세요.
+    </div>
+    <div class="input-group">
+      <label class="input-label">Notion API Token</label>
+      <input class="input-field" type="password" id="inputToken"
+        placeholder="secret_xxxxxxxxxxxxxxxxxxxx"
+        autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+  </div>
+
+  <!-- STEP 2: DB Template -->
+  <div class="step-card">
+    <div class="step-num">STEP 02</div>
+    <div class="step-title">노션 DB 템플릿 구성</div>
+    <div class="step-desc">
+      노션에서 새 데이터베이스를 만들고, 아래 속성을 추가하세요.<br>
+      <em style="color:var(--accent)">이름(Name)</em>은 기본으로 있어요.
+    </div>
+    <table class="schema-table">
+      <tr>
+        <th>속성 이름</th>
+        <th>타입</th>
+        <th>설명</th>
+      </tr>
+      <tr><td>이름</td><td><span class="type">title</span></td><td>습관명 (기본 속성)</td></tr>
+      <tr><td>날짜</td><td><span class="type">date</span></td><td>기록 날짜</td></tr>
+      <tr><td>완료</td><td><span class="type">checkbox</span></td><td>오늘 완료 여부</td></tr>
+      <tr><td>카테고리</td><td><span class="type">select</span></td><td>건강 / 공부 / 루틴 등</td></tr>
+      <tr><td>메모</td><td><span class="type">rich_text</span></td><td>간단한 메모 (선택)</td></tr>
+    </table>
+  </div>
+
+  <!-- STEP 3: Share DB -->
+  <div class="step-card">
+    <div class="step-num">STEP 03</div>
+    <div class="step-title">DB를 Integration과 연결</div>
+    <div class="step-desc">
+      만든 데이터베이스 페이지에서 우상단 <strong style="color:var(--text)">···</strong> 메뉴 →
+      <strong style="color:var(--text)">Connections</strong> → 방금 만든 Integration을 추가하세요.<br><br>
+      그 다음, DB 페이지 URL에서 ID를 복사하세요.<br>
+      URL 형식: <code style="color:var(--accent);font-size:11px">notion.so/[workspace]/<strong>여기가 DB ID</strong>?v=...</code>
+    </div>
+    <div class="input-group">
+      <label class="input-label">Database ID</label>
+      <input class="input-field" type="text" id="inputDbId"
+        placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+  </div>
+
+  <!-- STEP 4: CORS Proxy -->
+  <div class="step-card">
+    <div class="step-num">STEP 04</div>
+    <div class="step-title">CORS 프록시 설정 (필수)</div>
+    <div class="step-desc">
+      브라우저에서 Notion API를 직접 호출하면 CORS 오류가 납니다.<br>
+      무료 프록시 서버를 이용하거나, 본인의 서버를 사용하세요.<br><br>
+      가장 간단한 방법 — <a href="https://workers.dev" target="_blank">Cloudflare Workers</a> 무료 플랜으로
+      아래 코드를 배포하세요.
+    </div>
+    <div class="code-block">
+      <div><span class="key">// Cloudflare Worker 코드</span></div>
+      <div><span class="val">export default</span> {</div>
+      <div>&nbsp;&nbsp;<span class="val">async fetch</span>(req) {</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">const</span> url = req.url.replace(self.location.origin, <span class="val">'https://api.notion.com'</span>);</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">const</span> res = <span class="val">await</span> fetch(url, {method:req.method, headers:req.headers, body:req.body});</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">const</span> headers = <span class="val">new</span> Headers(res.headers);</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;headers.set(<span class="val">'Access-Control-Allow-Origin'</span>, <span class="val">'*'</span>);</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;headers.set(<span class="val">'Access-Control-Allow-Headers'</span>, <span class="val">'*'</span>);</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">return new</span> Response(res.body, {status:res.status, headers});</div>
+      <div>&nbsp;&nbsp;}</div>
+      <div>}</div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">프록시 URL (기본값: Cloudflare Worker URL)</label>
+      <input class="input-field" type="text" id="inputProxy"
+        placeholder="https://your-worker.your-name.workers.dev"
+        autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+
+  <button class="connect-btn" onclick="saveSettings()">연결 시작하기 →</button>
+
+  <p class="privacy-note">
+    🔒 <strong>개인정보 안전</strong> — 입력한 토큰과 DB ID는<br>
+    <strong>브라우저 localStorage에만 저장</strong>되며<br>
+    어떤 서버에도 전송되지 않습니다.
+  </p>
+</div>
+
+<!-- ══════════════════════════════════
+     MAIN APP
+══════════════════════════════════ -->
+<div class="app" id="mainApp">
+
+  <div class="app-header">
+    <div class="app-brand">HABIT TRACKER</div>
+    <button class="settings-btn" onclick="showSetup()">⚙ 설정</button>
+  </div>
+
+  <div>
+    <div class="date-strip" id="dateDisplay">--</div>
+    <div class="date-strip date-sub" id="dayDisplay">--</div>
+  </div>
+
+  <!-- Progress ring -->
+  <div class="progress-section">
+    <div class="ring-wrap">
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <circle class="ring-bg" cx="40" cy="40" r="34"/>
+        <circle class="ring-fill" id="ringFill" cx="40" cy="40" r="34"
+          stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+      </svg>
+      <div class="ring-label">
+        <div class="ring-pct" id="ringPct">0%</div>
+        <div class="ring-sub">완료</div>
+      </div>
+    </div>
+    <div class="progress-info">
+      <div class="progress-title" id="progressTitle">오늘의 습관</div>
+      <div class="progress-msg" id="progressMsg">노션에서 데이터를 불러오는 중...</div>
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  <div class="error-banner" id="errorBanner"></div>
+
+  <!-- Habit list -->
+  <div>
+    <div class="section-label">오늘의 체크리스트</div>
+    <div class="habits-list" id="habitsList">
+      <div class="empty-state">
+        <div class="loading-spinner"></div>
+        <div style="margin-top:16px">습관 목록을 불러오는 중...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly heatmap -->
+  <div class="week-section">
+    <div class="section-label">이번 주 현황</div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="refresh-row">
+    <button class="refresh-btn" onclick="loadHabits()">
+      <span class="refresh-icon">↻</span> 새로고침
+    </button>
+    <button class="refresh-btn notion-link-btn" onclick="openNotion()">
+      <span>N</span> 노션 열기
+    </button>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════
+// Config (localStorage only)
+// ══════════════════
+const CONFIG_KEY = 'ht_config_v1';
+
+function getConfig() {
+  try { return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {}; } catch { return {}; }
+}
+function saveConfig(cfg) {
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+}
+
+// ══════════════════
+// UI Helpers
+// ══════════════════
+function showToast(msg, dur = 2200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  if (msg) { el.textContent = msg; el.classList.add('visible'); }
+  else { el.classList.remove('visible'); }
+}
+
+function showSetup() {
+  document.getElementById('setupOverlay').classList.remove('hidden');
+  document.getElementById('mainApp').classList.remove('visible');
+  // pre-fill
+  const cfg = getConfig();
+  if (cfg.token) document.getElementById('inputToken').value = cfg.token;
+  if (cfg.dbId) document.getElementById('inputDbId').value = cfg.dbId;
+  if (cfg.proxy) document.getElementById('inputProxy').value = cfg.proxy;
+}
+
+function saveSettings() {
+  const token = document.getElementById('inputToken').value.trim();
+  const dbId = document.getElementById('inputDbId').value.trim().replace(/-/g,'');
+  const proxy = document.getElementById('inputProxy').value.trim().replace(/\/$/, '');
+  if (!token || !dbId || !proxy) {
+    showToast('⚠ 모든 항목을 입력해주세요');
+    return;
+  }
+  saveConfig({ token, dbId, proxy });
+  document.getElementById('setupOverlay').classList.add('hidden');
+  document.getElementById('mainApp').classList.add('visible');
+  initApp();
+}
+
+function openNotion() {
+  const cfg = getConfig();
+  window.open(`https://notion.so/${cfg.dbId || ''}`, '_blank');
+}
+
+// ══════════════════
+// Date helpers
+// ══════════════════
+const DAYS_KO = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+const DAYS_SHORT = ['일','월','화','수','목','금','토'];
+const MONTHS_KO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getWeekDates() {
+  const today = new Date();
+  const day = today.getDay();
+  return Array.from({length:7}, (_,i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - day + i);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  });
+}
+
+function setDateDisplay() {
+  const now = new Date();
+  document.getElementById('dateDisplay').textContent =
+    `${now.getFullYear()}. ${MONTHS_KO[now.getMonth()]} ${now.getDate()}일`;
+  document.getElementById('dayDisplay').textContent = DAYS_KO[now.getDay()];
+}
+
+// ══════════════════
+// Notion API
+// ══════════════════
+async function notionRequest(path, method = 'GET', body = null) {
+  const cfg = getConfig();
+  const url = `${cfg.proxy}/v1/${path}`;
+  const opts = {
+    method,
+    headers: {
+      'Authorization': `Bearer ${cfg.token}`,
+      'Notion-Version': '2022-06-28',
+      'Content-Type': 'application/json',
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// Query today's pages
+async function queryTodayHabits() {
+  const cfg = getConfig();
+  const today = todayISO();
+  // Query with date filter
+  const data = await notionRequest(`databases/${cfg.dbId}/query`, 'POST', {
+    filter: {
+      property: '날짜',
+      date: { equals: today }
+    },
+    sorts: [{ property: '이름', direction: 'ascending' }]
+  });
+  return data.results || [];
+}
+
+// Query week stats (just dates)
+async function queryWeekData() {
+  const cfg = getConfig();
+  const week = getWeekDates();
+  const data = await notionRequest(`databases/${cfg.dbId}/query`, 'POST', {
+    filter: {
+      and: [
+        { property: '날짜', date: { on_or_after: week[0] } },
+        { property: '날짜', date: { on_or_before: week[6] } }
+      ]
+    }
+  });
+  return data.results || [];
+}
+
+// Toggle checkbox
+async function toggleHabit(pageId, currentVal) {
+  await notionRequest(`pages/${pageId}`, 'PATCH', {
+    properties: {
+      '완료': { checkbox: !currentVal }
+    }
+  });
+}
+
+// ══════════════════
+// Render
+// ══════════════════
+let habitPages = [];
+
+function renderHabits(pages) {
+  habitPages = pages;
+  const list = document.getElementById('habitsList');
+  if (!pages.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <div>오늘 날짜(${todayISO()})로 등록된<br>습관이 없어요.<br><br>
+      노션 DB에 오늘 날짜로 항목을 추가해보세요!</div>
+    </div>`;
+    updateProgress(0, 0);
+    return;
+  }
+  const total = pages.length;
+  let done = 0;
+  list.innerHTML = pages.map((page, idx) => {
+    const name = page.properties?.['이름']?.title?.[0]?.plain_text || '(이름 없음)';
+    const completed = page.properties?.['완료']?.checkbox || false;
+    const cat = page.properties?.['카테고리']?.select?.name || '';
+    const memo = page.properties?.['메모']?.rich_text?.[0]?.plain_text || '';
+    if (completed) done++;
+    return `
+    <div class="habit-item ${completed ? 'done' : ''}" onclick="onToggle(${idx})" data-idx="${idx}">
+      <div class="habit-check"></div>
+      <div class="habit-info">
+        <div class="habit-name">${escHtml(name)}</div>
+        ${cat || memo ? `<div class="habit-meta">${escHtml(cat)}${cat && memo ? ' · ' : ''}${escHtml(memo)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  updateProgress(done, total);
+}
+
+function updateProgress(done, total) {
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const circumference = 213.6;
+  const offset = circumference - (circumference * pct / 100);
+  document.getElementById('ringFill').style.strokeDashoffset = offset;
+  document.getElementById('ringPct').textContent = pct + '%';
+  document.getElementById('progressTitle').textContent =
+    total ? `${done} / ${total} 완료` : '습관 없음';
+  const msgs = [
+    [0,  '오늘도 시작해봐요! 💪'],
+    [30, '좋은 출발이에요 🌱'],
+    [60, '절반 넘었어요! 잘하고 있어요 ✨'],
+    [90, '거의 다 왔어요! 🔥'],
+    [100,'오늘 완벽 달성! 🎉'],
+  ];
+  const msg = [...msgs].reverse().find(([t]) => pct >= t)?.[1] || '';
+  document.getElementById('progressMsg').textContent = msg;
+}
+
+function renderWeek(allPages) {
+  const week = getWeekDates();
+  const today = todayISO();
+  const grid = document.getElementById('weekGrid');
+
+  // Count completed per day
+  const dayMap = {};
+  const totalMap = {};
+  allPages.forEach(p => {
+    const date = p.properties?.['날짜']?.date?.start?.split('T')[0];
+    const done = p.properties?.['완료']?.checkbox;
+    if (!date) return;
+    totalMap[date] = (totalMap[date] || 0) + 1;
+    if (done) dayMap[date] = (dayMap[date] || 0) + 1;
+  });
+
+  grid.innerHTML = week.map((date, i) => {
+    const isToday = date === today;
+    const t = totalMap[date] || 0;
+    const d = dayMap[date] || 0;
+    const cls = t === 0 ? '' : (d === t ? 'full' : d > 0 ? 'partial' : '');
+    const label = t > 0 ? `${d}/${t}` : '';
+    return `
+    <div class="week-day">
+      <div class="week-day-label">${DAYS_SHORT[i]}</div>
+      <div class="week-dot ${cls} ${isToday ? 'today' : ''}">${label}</div>
+    </div>`;
+  }).join('');
+}
+
+async function onToggle(idx) {
+  const page = habitPages[idx];
+  if (!page) return;
+  const current = page.properties?.['완료']?.checkbox || false;
+  // Optimistic update
+  page.properties['완료'].checkbox = !current;
+  renderHabits(habitPages);
+  try {
+    await toggleHabit(page.id, current);
+    showToast(current ? '⬜ 취소했어요' : '✅ 완료!');
+    // Reload week data
+    const weekPages = await queryWeekData();
+    renderWeek(weekPages);
+  } catch(e) {
+    // Revert
+    page.properties['완료'].checkbox = current;
+    renderHabits(habitPages);
+    showToast('❌ 업데이트 실패: ' + e.message);
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════
+// Load
+// ══════════════════
+async function loadHabits() {
+  showError('');
+  document.getElementById('habitsList').innerHTML =
+    `<div class="empty-state"><div class="loading-spinner"></div><div style="margin-top:16px">불러오는 중...</div></div>`;
+  try {
+    const [todayPages, weekPages] = await Promise.all([
+      queryTodayHabits(),
+      queryWeekData()
+    ]);
+    renderHabits(todayPages);
+    renderWeek(weekPages);
+  } catch(e) {
+    showError('노션 연결 오류: ' + e.message + '\n\n설정을 확인해주세요.');
+    document.getElementById('habitsList').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">⚠️</div><div>데이터를 불러올 수 없어요.<br>설정 버튼에서 연결 정보를 확인해주세요.</div></div>`;
+    updateProgress(0,0);
+  }
+}
+
+// ══════════════════
+// Init
+// ══════════════════
+function initApp() {
+  setDateDisplay();
+  loadHabits();
+}
+
+// On load
+window.addEventListener('load', () => {
+  const cfg = getConfig();
+  if (cfg.token && cfg.dbId && cfg.proxy) {
+    document.getElementById('setupOverlay').classList.add('hidden');
+    document.getElementById('mainApp').classList.add('visible');
+    initApp();
+  } else {
+    // show setup
+  }
+});
+</script>
+</body>
+</html>
