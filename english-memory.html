@@ -206,7 +206,7 @@ const IMoon=()=>(<svg width="17" height="17" viewBox="0 0 24 24" fill="none" str
 const IDown=()=>(<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>);
 const ITag=()=>(<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>);
 const IGear=()=>(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>);
-const INotion=()=>(<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.14c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.Seven.373 1.027.747 1.027 1.96v16.378c0 1.26-.466 2.054-2.1 2.147l-15.43.934c-1.26.073-1.867-.14-2.568-.981L.793 21.38C.14 20.54 0 20.026 0 19.369V3.035c0-1.26.56-2.333 1.936-2z"/></svg>);
+const INotion=()=>(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 7h4l6 10h-4L7 7z"/><path d="M7 17V7"/><path d="M17 7v10"/></svg>);
 
 /* ── TagChip (재사용) ── */
 function TagChip({label, active, onClick, c, removable, small}){
@@ -227,7 +227,7 @@ function TagChip({label, active, onClick, c, removable, small}){
 
 /* ── Header ── */
 function Header({tab,todayCount,total,c,theme,onToggle,onExport,hasData,notionEnabled}){
-  const titles={list:"📚 내 문장 목록",add:"✏️ 오늘의 문장",quiz:"🎯 문제 풀기",settings:"⚙️ 노션 설정",dialogue:"💬 AI 회화 대화문"};
+  const titles={list:"📚 내 문장 목록",add:"✏️ 오늘의 문장",quiz:"🎯 문제 풀기",settings:"⚙️ 노션 설정",dialogue:"💬 회화 대화문"};
   return (
     <div style={{padding:"54px 20px 14px",background:c.headerGrad,transition:"background 0.25s"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -1004,238 +1004,6 @@ function DialogueView({c, onAdd}){
 /* ════════════════════════════════════════
    SettingsView  (노션 연동 설정)
 ════════════════════════════════════════ */
-  const [topic,      setTopic]     = useState(null);      // 선택된 주제
-  const [custom,     setCustom]    = useState("");         // 직접 입력
-  const [dialogue,   setDialogue]  = useState(null);      // [{speaker,english,korean}]
-  const [loading,    setLoading]   = useState(false);
-  const [selected,   setSelected]  = useState(new Set()); // 선택된 인덱스
-  const [saving,     setSaving]    = useState(false);
-  const [saved,      setSaved]     = useState(false);
-  const [error,      setError]     = useState(null);
-
-  const MAX_SELECT = 3;
-
-  async function generateDialogue(topicStr){
-    setLoading(true); setDialogue(null); setSelected(new Set()); setError(null);
-    try{
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          model:"claude-sonnet-4-20250514",
-          max_tokens:1000,
-          system:`You generate short English dialogues for Korean learners.
-Return ONLY valid JSON array, no markdown, no explanation.
-Format: [{"speaker":"A","english":"...","korean":"..."},...]
-Each line must be a complete natural sentence. Generate 8-10 turns total.`,
-          messages:[{
-            role:"user",
-            content:`Create a realistic dialogue about: ${topicStr}. Mix A and B speakers. Make sentences practical and useful for everyday English learners.`
-          }]
-        })
-      });
-      const data = await res.json();
-      const text = data.content?.map(b=>b.text||"").join("") || "";
-      const clean = text.replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(clean);
-      setDialogue(parsed);
-    }catch(e){
-      setError("대화문 생성에 실패했어요. 잠시 후 다시 시도해주세요.");
-    }
-    setLoading(false);
-  }
-
-  function toggleSelect(idx){
-    setSelected(prev=>{
-      const next = new Set(prev);
-      if(next.has(idx)){
-        next.delete(idx);
-      } else {
-        if(next.size >= MAX_SELECT) return prev; // 3개 초과 불가
-        next.add(idx);
-      }
-      return next;
-    });
-  }
-
-  async function handleSave(){
-    if(!selected.size) return;
-    setSaving(true);
-    const items = [...selected].map(i=>({
-      id: Date.now()+Math.random(),
-      date: new Date().toISOString().split("T")[0],
-      english: dialogue[i].english,
-      korean:  dialogue[i].korean,
-      tags:    ["대화문", topic?.label || "회화"].filter(Boolean),
-      memo:    `${dialogue[i].speaker}의 대화`,
-      reviewed:false,
-    }));
-    await onAdd(items);
-    setSaving(false);
-    setSaved(true);
-    setTimeout(()=>{ setSaved(false); setSelected(new Set()); },2000);
-  }
-
-  // 주제 선택 화면
-  if(!dialogue && !loading){
-    return (
-      <div style={{padding:"8px 16px 0"}}>
-        <div style={{background:c.surfaceHov,border:`1px solid ${c.borderAct}`,borderRadius:16,
-          padding:"14px 16px",marginBottom:20}}>
-          <div style={{fontSize:14,fontWeight:700,color:c.accent,marginBottom:4}}>💬 AI 회화 대화문</div>
-          <div style={{fontSize:12,color:c.textMuted,lineHeight:1.7}}>
-            주제를 고르면 AI가 실제 대화문을 만들어줘요.<br/>
-            대화 중 마음에 드는 문장 <strong style={{color:c.accent}}>최대 3개</strong>를 골라 저장하세요.
-          </div>
-        </div>
-
-        {/* 주제 선택 그리드 */}
-        <div style={{fontSize:11,color:c.textMuted,letterSpacing:2,marginBottom:10}}>주제 선택</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:20}}>
-          {DIALOGUE_TOPICS.map(t=>(
-            <button key={t.label} onClick={()=>{ setTopic(t); generateDialogue(t.topic); }} className="btn-press"
-              style={{padding:"13px 10px",borderRadius:14,border:`1px solid ${c.border}`,
-                background:c.surface,cursor:"pointer",textAlign:"left",boxShadow:c.shadow}}>
-              <div style={{fontSize:22,marginBottom:4}}>{t.emoji}</div>
-              <div style={{fontSize:13,fontWeight:700,color:c.text}}>{t.label}</div>
-            </button>
-          ))}
-        </div>
-
-        {/* 직접 입력 */}
-        <div style={{fontSize:11,color:c.textMuted,letterSpacing:2,marginBottom:8}}>직접 입력</div>
-        <div style={{display:"flex",gap:8,marginBottom:24}}>
-          <input value={custom} onChange={e=>setCustom(e.target.value)}
-            onKeyDown={e=>{ if(e.key==="Enter"&&custom.trim()){ setTopic({label:custom.trim(),emoji:"✏️"}); generateDialogue(custom.trim()); }}}
-            placeholder="예: 친구와 영화 약속 잡기"
-            style={{flex:1,background:c.inputBg,border:`1px solid ${c.inputBord}`,borderRadius:12,
-              padding:"12px 14px",color:c.text,fontSize:13,outline:"none",fontFamily:"'Noto Sans KR',sans-serif"}}/>
-          <button onClick={()=>{ if(custom.trim()){ setTopic({label:custom.trim(),emoji:"✏️"}); generateDialogue(custom.trim()); }}}
-            disabled={!custom.trim()} className="btn-press"
-            style={{padding:"12px 16px",borderRadius:12,border:"none",
-              background:custom.trim()?`linear-gradient(135deg,${c.accent},${c.accentB})`:"rgba(255,255,255,0.07)",
-              color:custom.trim()?"#fff":c.textMuted,fontSize:13,fontWeight:700,cursor:custom.trim()?"pointer":"default"}}>
-            생성
-          </button>
-        </div>
-
-        {error&&<div style={{padding:"12px",borderRadius:10,background:"rgba(239,68,68,0.1)",color:"#EF4444",fontSize:13}}>{error}</div>}
-      </div>
-    );
-  }
-
-  // 로딩
-  if(loading){
-    return (
-      <div style={{padding:"80px 20px",textAlign:"center"}}>
-        <div style={{fontSize:40,marginBottom:16,animation:"pop 1s infinite"}}>💬</div>
-        <div style={{fontSize:15,fontWeight:700,color:c.accent,marginBottom:8}}>대화문 생성 중...</div>
-        <div style={{fontSize:12,color:c.textMuted}}>{topic?.emoji} {topic?.label}</div>
-      </div>
-    );
-  }
-
-  // 대화문 표시 + 선택
-  return (
-    <div style={{padding:"8px 16px 0"}}>
-      {/* 헤더 */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div>
-          <div style={{fontSize:14,fontWeight:700,color:c.text}}>{topic?.emoji} {topic?.label}</div>
-          <div style={{fontSize:11,color:c.textMuted,marginTop:2}}>
-            {selected.size}/{MAX_SELECT}개 선택됨 · 최대 3개
-          </div>
-        </div>
-        <button onClick={()=>{ setDialogue(null); setTopic(null); setCustom(""); }} className="btn-press"
-          style={{padding:"7px 12px",borderRadius:10,border:`1px solid ${c.border}`,
-            background:c.surface,color:c.textSub,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-          ← 다시 선택
-        </button>
-      </div>
-
-      {/* 선택 안내 배너 */}
-      <div style={{background:"rgba(167,139,250,0.07)",border:`1px solid rgba(167,139,250,0.2)`,
-        borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:12,color:c.accent,lineHeight:1.6}}>
-        💡 외우고 싶은 문장을 탭해서 선택하세요 (최대 3개)
-      </div>
-
-      {/* 대화문 */}
-      <div style={{marginBottom:16}}>
-        {dialogue.map((line,i)=>{
-          const isA = line.speaker==="A";
-          const isSel = selected.has(i);
-          return (
-            <div key={i} onClick={()=>toggleSelect(i)}
-              style={{
-                display:"flex",flexDirection:"column",
-                alignItems:isA?"flex-start":"flex-end",
-                marginBottom:10,
-                animation:`fadeUp 0.25s ${i*0.04}s both`,
-                cursor:"pointer",
-              }}>
-              <div style={{
-                maxWidth:"82%",
-                padding:"11px 14px",
-                borderRadius:isA?"4px 16px 16px 16px":"16px 4px 16px 16px",
-                background:isSel
-                  ? `linear-gradient(135deg,${c.accent}22,${c.accentB}22)`
-                  : isA ? c.surface : c.inputBg,
-                border:`2px solid ${isSel ? c.accent : c.border}`,
-                boxShadow:isSel?`0 0 0 3px ${c.accent}33`:"none",
-                transition:"all 0.15s",
-                position:"relative",
-              }}>
-                {isSel && (
-                  <div style={{position:"absolute",top:-8,right:-8,width:20,height:20,
-                    borderRadius:"50%",background:c.accent,display:"flex",alignItems:"center",
-                    justifyContent:"center",fontSize:11,color:"#fff",fontWeight:900,boxShadow:"0 2px 6px rgba(0,0,0,0.3)"}}>
-                    {[...selected].indexOf(i)+1}
-                  </div>
-                )}
-                <div style={{fontSize:10,color:isA?c.accent:c.accentB,fontWeight:700,marginBottom:5,letterSpacing:1}}>
-                  {line.speaker}
-                </div>
-                <div style={{fontSize:14,fontWeight:600,color:isA?c.text:c.accentB,
-                  fontStyle:isA?"normal":"italic",lineHeight:1.6,marginBottom:4}}>
-                  {line.english}
-                </div>
-                <div style={{fontSize:12,color:c.textMuted,lineHeight:1.5}}>
-                  {line.korean}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 저장 버튼 */}
-      {saved ? (
-        <div style={{textAlign:"center",padding:"16px",fontSize:15,fontWeight:700,color:c.accentB,
-          animation:"fadeUp 0.3s ease"}}>✅ {selected.size}개 문장이 저장됐어요!</div>
-      ) : (
-        <button onClick={handleSave} disabled={!selected.size||saving} className="btn-press"
-          style={{width:"100%",padding:"16px",borderRadius:16,border:"none",marginBottom:24,
-            background:selected.size?`linear-gradient(135deg,${c.accent},${c.accentB})`:c.saveDis,
-            color:selected.size?"#fff":c.saveDisTxt,
-            fontSize:16,fontWeight:900,cursor:selected.size&&!saving?"pointer":"default",
-            transition:"background 0.2s"}}>
-          {saving?"📤 저장 중...":`${selected.size}개 문장 암기장에 저장`}
-        </button>
-      )}
-
-      {/* 다시 생성 버튼 */}
-      <button onClick={()=>generateDialogue(topic?.topic||topic?.label)} className="btn-press"
-        style={{width:"100%",padding:"13px",borderRadius:14,border:`1px solid ${c.borderAct}`,
-          background:"transparent",color:c.accent,fontSize:14,fontWeight:700,cursor:"pointer",marginBottom:24}}>
-        🔄 같은 주제로 다시 생성
-      </button>
-    </div>
-  );
-}
-
-/* ════════════════════════════════════════
-   SettingsView  (노션 연동 설정)
-════════════════════════════════════════ */
 function SettingsView({c, notionCfg, setNotionCfg}){
   const [apiKey, setApiKey] = useState(notionCfg.apiKey||"");
   const [dbId,   setDbId]   = useState(notionCfg.dbId||"");
@@ -1429,7 +1197,7 @@ function AppRoot(){
   const toggleTheme=()=>{ const n=theme==="dark"?"light":"dark"; setTheme(n); saveTheme(n); };
   const addSentences=async items=>{
     const date=new Date().toISOString().split("T")[0];
-    const withDate=items.map(s=>({...s,date,reviewed:false}));
+    const withDate=items.map(s=>({date, reviewed:false, ...s}));
     const u=[...sentences,...withDate]; setSentences(u); save(u);
     // 노션 자동 전송
     if(notionCfg.enabled&&notionCfg.apiKey&&notionCfg.dbId){
@@ -1440,7 +1208,7 @@ function AppRoot(){
   };
   const deleteSentence=id=>{ const u=sentences.filter(s=>s.id!==id); setSentences(u); save(u); };
 
-  const titles={list:"📚 내 문장 목록",add:"✏️ 오늘의 문장",quiz:"🎯 문제 풀기",settings:"⚙️ 노션 설정"};
+  const titles={list:"📚 내 문장 목록",add:"✏️ 오늘의 문장",quiz:"🎯 문제 풀기",settings:"⚙️ 노션 설정",dialogue:"💬 회화 대화문"};
 
   return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:c.bg,color:c.text,transition:"background 0.25s,color 0.25s"}}>
