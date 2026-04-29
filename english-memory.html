@@ -51,55 +51,58 @@ function save(d){ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(d)); }cat
 function loadTheme(){ try{ return localStorage.getItem(THEME_KEY)||"dark"; }catch{ return "dark"; } }
 function saveTheme(t){ try{ localStorage.setItem(THEME_KEY,t); }catch{} }
 function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
-/* ── Notion 설정: localStorage + sessionStorage + IndexedDB 3중 저장 (사파리 대응) ── */
-const NOTION_IDB = "eng_notion_idb";
+/* ── Notion 설정: URL 해시 우선 저장 (사파리 새로고침 완전 대응) ── */
+
+function encodeHash(d){
+  try{ return btoa(unescape(encodeURIComponent(JSON.stringify(d)))); }catch{ return ""; }
+}
+function decodeHash(s){
+  try{ return JSON.parse(decodeURIComponent(escape(atob(s)))); }catch{ return null; }
+}
+
+// URL 해시에서 notion 파라미터 읽기
+function loadNotionFromHash(){
+  try{
+    const hash = window.location.hash.slice(1); // '#' 제거
+    const params = new URLSearchParams(hash);
+    const n = params.get("n");
+    if(n) return decodeHash(n);
+  }catch{}
+  return null;
+}
+
+// URL 해시에 notion 파라미터 저장 (새로고침해도 유지됨)
+function saveNotionToHash(d){
+  try{
+    const hash = window.location.hash.slice(1);
+    const params = new URLSearchParams(hash);
+    params.set("n", encodeHash(d));
+    window.location.replace("#" + params.toString());
+  }catch{}
+}
 
 function loadNotion(){
   const empty = {apiKey:"",dbId:"",enabled:false};
-  // 1) localStorage
+  // 1순위: URL 해시 (새로고침에도 살아남음)
+  const fromHash = loadNotionFromHash();
+  if(fromHash && (fromHash.apiKey || fromHash.dbId)) return fromHash;
+  // 2순위: localStorage
   try{ const v=localStorage.getItem(NOTION_KEY); if(v) return JSON.parse(v); }catch{}
-  // 2) sessionStorage
+  // 3순위: sessionStorage
   try{ const v=sessionStorage.getItem(NOTION_KEY); if(v) return JSON.parse(v); }catch{}
   return empty;
 }
 
 function saveNotion(d){
+  // URL 해시 (가장 확실 — 사파리 새로고침 대응)
+  saveNotionToHash(d);
+  // 나머지도 병행 저장
   const s = JSON.stringify(d);
-  // 1) localStorage
   try{ localStorage.setItem(NOTION_KEY, s); }catch{}
-  // 2) sessionStorage (사파리 fallback)
   try{ sessionStorage.setItem(NOTION_KEY, s); }catch{}
-  // 3) IndexedDB (가장 영구적)
-  try{
-    const req = indexedDB.open("EngMemory", 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore("kv");
-    req.onsuccess = e => {
-      const db = e.target.result;
-      const tx = db.transaction("kv","readwrite");
-      tx.objectStore("kv").put(s, NOTION_IDB);
-    };
-  }catch{}
 }
 
-function loadNotionFromIDB(callback){
-  try{
-    const req = indexedDB.open("EngMemory",1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore("kv");
-    req.onsuccess = e => {
-      const db = e.target.result;
-      const tx = db.transaction("kv","readonly");
-      const get = tx.objectStore("kv").get(NOTION_IDB);
-      get.onsuccess = () => {
-        if(get.result){
-          try{
-            const parsed = JSON.parse(get.result);
-            callback(parsed);
-          }catch{}
-        }
-      };
-    };
-  }catch{}
-}
+function loadNotionFromIDB(callback){ callback(null); } // 더 이상 불필요, 호환용 유지
 
 async function sendToNotion(sentence, notionCfg){
   const {apiKey, dbId} = notionCfg;
@@ -863,9 +866,22 @@ function SettingsView({c, notionCfg, setNotionCfg}){
 
       {/* 사파리 안내 */}
       <div style={{marginTop:16,padding:"12px 14px",borderRadius:12,
-        background:"rgba(96,165,250,0.07)",border:"1px solid rgba(96,165,250,0.2)",fontSize:12,color:c.textSub,lineHeight:1.8}}>
-        📱 <strong style={{color:c.accentB}}>아이폰 사파리 사용자</strong>라면 설정 저장 후 앱이 3곳(localStorage · sessionStorage · IndexedDB)에 동시 저장해요.
-        그래도 초기화된다면 사파리 설정 → 고급 → 사이트별 개인 정보 보호 → 해당 파일의 저장소 제한을 해제해보세요.
+        background:"rgba(96,165,250,0.07)",border:"1px solid rgba(96,165,250,0.2)",fontSize:12,color:c.textSub,lineHeight:1.9,marginBottom:20}}>
+        📱 <strong style={{color:c.accentB}}>아이폰 사파리</strong> 사용자라면 설정 저장 후 아래 버튼으로 URL을 복사해 북마크에 저장하세요.<br/>
+        설정값이 URL 안에 포함되어 있어 새로고침해도 절대 사라지지 않아요.
+        <button onClick={()=>{
+          try{
+            navigator.clipboard.writeText(window.location.href);
+            alert("✅ URL이 복사됐어요!\n사파리에서 이 URL을 북마크로 저장하면 설정이 유지돼요.");
+          }catch{
+            prompt("이 URL을 복사해서 북마크로 저장하세요:", window.location.href);
+          }
+        }} className="btn-press"
+          style={{display:"block",width:"100%",marginTop:10,padding:"10px",borderRadius:10,
+            border:`1px solid rgba(96,165,250,0.4)`,background:"rgba(96,165,250,0.1)",
+            color:c.accentB,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+          🔗 현재 URL 복사 (북마크용)
+        </button>
       </div>
     </div>
   );
