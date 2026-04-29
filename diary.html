@@ -178,13 +178,13 @@ textarea,input,select{font-family:var(--font)}
 .hs-btn.on{background:var(--ac);border-color:var(--ac);color:#0c0c10;font-weight:700}
 
 /* Per-habit calendar heatmap */
-.habit-cal-wrap{margin-top:4px}
-.hcal-month{margin-bottom:20px}
-.hcal-month-label{font-family:var(--font-mono);font-size:11px;color:var(--ac);letter-spacing:1px;margin-bottom:8px}
-.hcal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px}
+.habit-cal-wrap{margin-top:4px;width:100%;overflow:hidden}
+.hcal-month{margin-bottom:16px;width:100%}
+.hcal-month-label{font-family:var(--font-mono);font-size:11px;color:var(--ac);letter-spacing:1px;margin-bottom:6px}
+.hcal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px;width:100%}
 .hcal-dl{text-align:center;font-size:9px;font-family:var(--font-mono);color:var(--t3)}
-.hcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-.hcal-cell{aspect-ratio:1;border-radius:4px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--t3);transition:background .2s}
+.hcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;width:100%}
+.hcal-cell{aspect-ratio:1;border-radius:3px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--t3);transition:background .2s;min-width:0;min-height:0}
 .hcal-cell.today{box-shadow:0 0 0 1.5px var(--ac)}
 .hcal-cell.empty{background:transparent}
 .hcal-cell.done-yes{background:var(--ac);color:#0c0c10;font-weight:700}
