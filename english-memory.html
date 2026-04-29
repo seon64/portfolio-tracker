@@ -34,8 +34,9 @@
 <script type="text/babel">
 const {useState, useEffect, useRef} = React;
 
-const STORAGE_KEY = "eng_memory_v3";
-const THEME_KEY   = "eng_theme_v1";
+const STORAGE_KEY  = "eng_memory_v3";
+const THEME_KEY    = "eng_theme_v1";
+const NOTION_KEY   = "eng_notion_v1";
 
 /* ── 추천 태그 목록 ── */
 const PRESET_TAGS = [
@@ -50,6 +51,87 @@ function save(d){ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(d)); }cat
 function loadTheme(){ try{ return localStorage.getItem(THEME_KEY)||"dark"; }catch{ return "dark"; } }
 function saveTheme(t){ try{ localStorage.setItem(THEME_KEY,t); }catch{} }
 function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+/* ── Notion 설정: localStorage + sessionStorage + IndexedDB 3중 저장 (사파리 대응) ── */
+const NOTION_IDB = "eng_notion_idb";
+
+function loadNotion(){
+  const empty = {apiKey:"",dbId:"",enabled:false};
+  // 1) localStorage
+  try{ const v=localStorage.getItem(NOTION_KEY); if(v) return JSON.parse(v); }catch{}
+  // 2) sessionStorage
+  try{ const v=sessionStorage.getItem(NOTION_KEY); if(v) return JSON.parse(v); }catch{}
+  return empty;
+}
+
+function saveNotion(d){
+  const s = JSON.stringify(d);
+  // 1) localStorage
+  try{ localStorage.setItem(NOTION_KEY, s); }catch{}
+  // 2) sessionStorage (사파리 fallback)
+  try{ sessionStorage.setItem(NOTION_KEY, s); }catch{}
+  // 3) IndexedDB (가장 영구적)
+  try{
+    const req = indexedDB.open("EngMemory", 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore("kv");
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const tx = db.transaction("kv","readwrite");
+      tx.objectStore("kv").put(s, NOTION_IDB);
+    };
+  }catch{}
+}
+
+function loadNotionFromIDB(callback){
+  try{
+    const req = indexedDB.open("EngMemory",1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore("kv");
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const tx = db.transaction("kv","readonly");
+      const get = tx.objectStore("kv").get(NOTION_IDB);
+      get.onsuccess = () => {
+        if(get.result){
+          try{
+            const parsed = JSON.parse(get.result);
+            callback(parsed);
+          }catch{}
+        }
+      };
+    };
+  }catch{}
+}
+
+async function sendToNotion(sentence, notionCfg){
+  const {apiKey, dbId} = notionCfg;
+  if(!apiKey||!dbId) throw new Error("API 키와 DB ID를 먼저 설정해주세요");
+  const PROXY = "https://corsproxy.io/?url=";
+  const url = `${PROXY}${encodeURIComponent("https://api.notion.com/v1/pages")}`;
+  const body = {
+    parent: { database_id: dbId },
+    properties: {
+      "영어문장": { title: [{ text: { content: sentence.english } }] },
+      "한글뜻":   { rich_text: [{ text: { content: sentence.korean } }] },
+      "태그":     { multi_select: (sentence.tags||[]).map(t=>({name:t})) },
+      "메모":     { rich_text: [{ text: { content: sentence.memo||"" } }] },
+      "날짜":     { date: { start: sentence.date } },
+      "복습완료": { checkbox: sentence.reviewed||false },
+    }
+  };
+  const res = await fetch(url, {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":`Bearer ${apiKey}`,
+      "Notion-Version":"2022-06-28",
+    },
+    body: JSON.stringify(body),
+  });
+  if(!res.ok){
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err.message||`HTTP ${res.status}`);
+  }
+  return await res.json();
+}
 
 /* ── 색상 팔레트 ── */
 const DARK={
@@ -119,6 +201,8 @@ const ISun=()=>(<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stro
 const IMoon=()=>(<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>);
 const IDown=()=>(<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>);
 const ITag=()=>(<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>);
+const IGear=()=>(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>);
+const INotion=()=>(<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.14c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.Seven.373 1.027.747 1.027 1.96v16.378c0 1.26-.466 2.054-2.1 2.147l-15.43.934c-1.26.073-1.867-.14-2.568-.981L.793 21.38C.14 20.54 0 20.026 0 19.369V3.035c0-1.26.56-2.333 1.936-2z"/></svg>);
 
 /* ── TagChip (재사용) ── */
 function TagChip({label, active, onClick, c, removable, small}){
@@ -137,45 +221,21 @@ function TagChip({label, active, onClick, c, removable, small}){
   );
 }
 
-/* ════════════════════════════════════════
-   App
-════════════════════════════════════════ */
-function App(){
-  const [tab,       setTab]       = useState("list");
-  const [sentences, setSentences] = useState(load);
-  const [theme,     setTheme]     = useState(loadTheme);
-  const c = theme==="dark" ? DARK : LIGHT;
-  const todayKey   = new Date().toISOString().split("T")[0];
-  const todayCount = sentences.filter(s=>s.date===todayKey).length;
-
-  useEffect(()=>{ document.body.style.background=c.bg; },[theme]);
-
-  const toggleTheme=()=>{ const n=theme==="dark"?"light":"dark"; setTheme(n); saveTheme(n); };
-  const addSentences=items=>{ const u=[...sentences,...items]; setSentences(u); save(u); };
-  const deleteSentence=id=>{ const u=sentences.filter(s=>s.id!==id); setSentences(u); save(u); };
-
-  return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:c.bg,color:c.text,transition:"background 0.25s,color 0.25s"}}>
-      <Header tab={tab} todayCount={todayCount} total={sentences.length}
-        c={c} theme={theme} onToggle={toggleTheme}
-        onExport={()=>exportToExcel(sentences)} hasData={sentences.length>0}/>
-      <div style={{flex:1,overflowY:"auto",paddingBottom:90}}>
-        {tab==="list" && <ListView sentences={sentences} onDelete={deleteSentence} todayKey={todayKey} c={c}/>}
-        {tab==="add"  && <AddView  todayCount={todayCount} onAdd={addSentences} onDone={()=>setTab("list")} c={c}/>}
-        {tab==="quiz" && <QuizView sentences={sentences} c={c}/>}
-      </div>
-      <BottomTabs tab={tab} setTab={setTab} c={c}/>
-    </div>
-  );
-}
-
 /* ── Header ── */
-function Header({tab,todayCount,total,c,theme,onToggle,onExport,hasData}){
-  const titles={list:"📚 내 문장 목록",add:"✏️ 오늘의 문장",quiz:"🎯 문제 풀기"};
+function Header({tab,todayCount,total,c,theme,onToggle,onExport,hasData,notionEnabled}){
+  const titles={list:"📚 내 문장 목록",add:"✏️ 오늘의 문장",quiz:"🎯 문제 풀기",settings:"⚙️ 노션 설정"};
   return (
     <div style={{padding:"54px 20px 14px",background:c.headerGrad,transition:"background 0.25s"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <div style={{fontSize:11,letterSpacing:3,color:c.textMuted,textTransform:"uppercase",fontFamily:"DM Serif Display,serif"}}>English Memory</div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{fontSize:11,letterSpacing:3,color:c.textMuted,textTransform:"uppercase",fontFamily:"DM Serif Display,serif"}}>English Memory</div>
+          {notionEnabled&&(
+            <span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,
+              background:"rgba(167,139,250,0.15)",color:c.accent,border:"1px solid rgba(167,139,250,0.3)"}}>
+              N 연동중
+            </span>
+          )}
+        </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           {tab==="list"&&hasData&&(
             <button onClick={onExport} className="btn-press"
@@ -455,18 +515,21 @@ function AddView({todayCount,onAdd,onDone,c,sentences}){
   const emptySlot=()=>({korean:"",english:"",tags:[],memo:""});
   const [slots,setSlots]=useState(()=>Array.from({length:Math.min(remaining,MAX)},emptySlot));
   const [saved,setSaved]=useState(false);
+  const [syncing,setSyncing]=useState(false);
 
   /* 기존 문장에서 이미 쓴 태그 수집 */
   const allUsedTags=[...new Set((sentences||[]).flatMap(s=>s.tags||[]))];
 
   function updateSlot(idx,val){ setSlots(p=>p.map((s,i)=>i===idx?val:s)); }
-  function handleSave(){
+  async function handleSave(){
     const valid=slots.filter(s=>s.korean.trim()&&s.english.trim());
     if(!valid.length) return;
+    setSyncing(true);
     const date=new Date().toISOString().split("T")[0];
-    onAdd(valid.map(s=>({id:Date.now()+Math.random(),date,
+    await onAdd(valid.map(s=>({id:Date.now()+Math.random(),date,
       korean:s.korean.trim(),english:s.english.trim(),
-      tags:s.tags||[],memo:(s.memo||"").trim()})));
+      tags:s.tags||[],memo:(s.memo||"").trim(),reviewed:false})));
+    setSyncing(false);
     setSaved(true); setTimeout(()=>onDone(),900);
   }
   const canSave=slots.some(s=>s.korean.trim()&&s.english.trim());
@@ -504,13 +567,13 @@ function AddView({todayCount,onAdd,onDone,c,sentences}){
           slot={slot} onChange={val=>updateSlot(idx,val)} c={c} allUsedTags={allUsedTags}/>
       ))}
 
-      <button onClick={handleSave} className="btn-press"
+      <button onClick={handleSave} disabled={syncing} className="btn-press"
         style={{width:"100%",padding:"16px",borderRadius:16,border:"none",
           background:canSave?`linear-gradient(135deg,${c.accent},${c.accentB})`:c.saveDis,
           color:canSave?"#fff":c.saveDisTxt,fontSize:16,fontWeight:900,
-          cursor:canSave?"pointer":"default",letterSpacing:0.5,marginTop:4,marginBottom:20,
+          cursor:canSave&&!syncing?"pointer":"default",letterSpacing:0.5,marginTop:4,marginBottom:20,
           transition:"background 0.2s"}}>
-        저장하기
+        {syncing?"📤 노션에 저장 중...":"저장하기"}
       </button>
     </div>
   );
@@ -676,9 +739,141 @@ function QuizView({sentences,c}){
   );
 }
 
+/* ════════════════════════════════════════
+   SettingsView  (노션 연동 설정)
+════════════════════════════════════════ */
+function SettingsView({c, notionCfg, setNotionCfg}){
+  const [apiKey, setApiKey] = useState(notionCfg.apiKey||"");
+  const [dbId,   setDbId]   = useState(notionCfg.dbId||"");
+  const [enabled,setEnabled]= useState(notionCfg.enabled||false);
+  const [saved,  setSaved]  = useState(false);
+  const [testing,setTesting]= useState(false);
+  const [testMsg,setTestMsg]= useState(null); // {ok, text}
+
+  function handleSave(){
+    const cfg={apiKey:apiKey.trim(), dbId:dbId.trim(), enabled};
+    setNotionCfg(cfg); saveNotion(cfg);
+    setSaved(true); setTimeout(()=>setSaved(false),2000);
+  }
+
+  async function handleTest(){
+    setTesting(true); setTestMsg(null);
+    try{
+      const testSentence={
+        english:"This is a test sentence.",korean:"테스트 문장이에요.",
+        tags:["테스트"],memo:"연동 확인용",date:new Date().toISOString().split("T")[0],reviewed:false
+      };
+      await sendToNotion(testSentence,{apiKey:apiKey.trim(),dbId:dbId.trim()});
+      setTestMsg({ok:true,text:"✅ 노션에 테스트 항목이 추가됐어요!"});
+    }catch(e){
+      setTestMsg({ok:false,text:`❌ ${e.message}`});
+    }
+    setTesting(false);
+  }
+
+  const inputStyle={
+    width:"100%",background:c.inputBg,border:`1px solid ${c.inputBord}`,
+    borderRadius:12,padding:"12px 14px",color:c.text,fontSize:13,outline:"none",
+    fontFamily:"'Noto Sans KR',sans-serif",marginTop:6,boxSizing:"border-box"
+  };
+
+  return (
+    <div style={{padding:"16px 16px 0"}}>
+      {/* 노션 연동 안내 */}
+      <div style={{background:"rgba(167,139,250,0.08)",border:"1px solid rgba(167,139,250,0.2)",
+        borderRadius:16,padding:"16px",marginBottom:20}}>
+        <div style={{fontSize:13,fontWeight:700,color:c.accent,marginBottom:8}}>🔗 노션(Notion) 연동 설정</div>
+        <div style={{fontSize:12,color:c.textSub,lineHeight:1.8}}>
+          문장 저장 시 노션 DB에 자동으로 추가됩니다.<br/>
+          아래 항목을 채워주세요:
+        </div>
+        <div style={{marginTop:10,padding:"10px 12px",background:c.surface,borderRadius:10,fontSize:11,color:c.textMuted,lineHeight:2}}>
+          1️⃣ <a href="https://www.notion.com/my-integrations" target="_blank" style={{color:c.accent}}>노션 인테그레이션</a> 생성 → API 키 복사<br/>
+          2️⃣ 노션 DB 페이지 → 우측 상단 ··· → Connect to → 인테그레이션 연결<br/>
+          3️⃣ DB URL에서 ID 복사 (32자리 영숫자)<br/>
+          4️⃣ 노션 DB에 아래 컬럼 생성:<br/>
+          <span style={{marginLeft:16,color:c.accent}}>영어문장(Title) · 한글뜻(Text) · 태그(Multi-select)<br/>
+          <span style={{marginLeft:16}}>메모(Text) · 날짜(Date) · 복습완료(Checkbox)</span></span>
+        </div>
+      </div>
+
+      {/* 활성화 토글 */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+        background:c.surface,border:`1px solid ${c.border}`,borderRadius:14,
+        padding:"14px 16px",marginBottom:14}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:700,color:c.text}}>노션 자동 저장</div>
+          <div style={{fontSize:11,color:c.textMuted,marginTop:2}}>저장 시 노션 DB에 자동 추가</div>
+        </div>
+        <button onClick={()=>setEnabled(e=>!e)} className="btn-press"
+          style={{width:48,height:26,borderRadius:13,border:"none",cursor:"pointer",
+            background:enabled?c.accent:"rgba(255,255,255,0.1)",position:"relative",transition:"background 0.2s"}}>
+          <div style={{position:"absolute",top:3,left:enabled?26:3,width:20,height:20,
+            borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}/>
+        </button>
+      </div>
+
+      {/* API Key */}
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:11,color:c.textMuted,letterSpacing:1}}>🔑 Notion API Key (Integration Token)</div>
+        <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)}
+          placeholder="secret_xxxxxxxxxxxxxxxxxxxx"
+          style={inputStyle}/>
+      </div>
+
+      {/* DB ID */}
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:11,color:c.textMuted,letterSpacing:1}}>🗄️ Database ID</div>
+        <input type="text" value={dbId} onChange={e=>setDbId(e.target.value)}
+          placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          style={inputStyle}/>
+        <div style={{fontSize:11,color:c.textMuted,marginTop:5}}>
+          DB URL: notion.so/[workspace]/<span style={{color:c.accent}}>여기가 DB ID</span>?v=...
+        </div>
+      </div>
+
+      {/* 테스트 전송 메시지 */}
+      {testMsg&&(
+        <div style={{padding:"10px 14px",borderRadius:10,marginBottom:12,fontSize:12,
+          background:testMsg.ok?"rgba(74,222,128,0.1)":"rgba(239,68,68,0.1)",
+          color:testMsg.ok?"#4ADE80":"#EF4444",
+          border:`1px solid ${testMsg.ok?"rgba(74,222,128,0.3)":"rgba(239,68,68,0.3)"}`}}>
+          {testMsg.text}
+        </div>
+      )}
+
+      <div style={{display:"flex",gap:10}}>
+        {/* 테스트 전송 버튼 */}
+        <button onClick={handleTest} disabled={testing||!apiKey.trim()||!dbId.trim()} className="btn-press"
+          style={{flex:1,padding:"14px",borderRadius:14,border:`1px solid ${c.borderAct}`,
+            background:"transparent",color:c.accent,fontSize:14,fontWeight:700,
+            cursor:apiKey.trim()&&dbId.trim()?"pointer":"default",
+            opacity:apiKey.trim()&&dbId.trim()?1:0.4}}>
+          {testing?"전송 중...":"🧪 테스트 전송"}
+        </button>
+
+        {/* 저장 버튼 */}
+        <button onClick={handleSave} className="btn-press"
+          style={{flex:1,padding:"14px",borderRadius:14,border:"none",
+            background:saved?`linear-gradient(135deg,#4ADE80,#22C55E)`:`linear-gradient(135deg,${c.accent},${c.accentB})`,
+            color:"#fff",fontSize:14,fontWeight:900,cursor:"pointer",transition:"background 0.3s"}}>
+          {saved?"✅ 저장됨!":"설정 저장"}
+        </button>
+      </div>
+
+      {/* 사파리 안내 */}
+      <div style={{marginTop:16,padding:"12px 14px",borderRadius:12,
+        background:"rgba(96,165,250,0.07)",border:"1px solid rgba(96,165,250,0.2)",fontSize:12,color:c.textSub,lineHeight:1.8}}>
+        📱 <strong style={{color:c.accentB}}>아이폰 사파리 사용자</strong>라면 설정 저장 후 앱이 3곳(localStorage · sessionStorage · IndexedDB)에 동시 저장해요.
+        그래도 초기화된다면 사파리 설정 → 고급 → 사이트별 개인 정보 보호 → 해당 파일의 저장소 제한을 해제해보세요.
+      </div>
+    </div>
+  );
+}
+
 /* ── BottomTabs ── */
 function BottomTabs({tab,setTab,c}){
-  const tabs=[{id:"list",label:"목록",Icon:IBook},{id:"add",label:"입력",Icon:IPencil},{id:"quiz",label:"문제풀기",Icon:IPlay}];
+  const tabs=[{id:"list",label:"목록",Icon:IBook},{id:"add",label:"입력",Icon:IPencil},{id:"quiz",label:"문제풀기",Icon:IPlay},{id:"settings",label:"설정",Icon:IGear}];
   return (
     <div style={{position:"fixed",bottom:0,left:0,right:0,background:c.tabBg,backdropFilter:"blur(16px)",
       borderTop:`1px solid ${c.tabBorder}`,display:"flex",padding:"8px 0 28px",zIndex:100,
@@ -702,25 +897,55 @@ function AppRoot(){
   const [tab,       setTab]       = useState("list");
   const [sentences, setSentences] = useState(load);
   const [theme,     setTheme]     = useState(loadTheme);
+  const [notionCfg, setNotionCfg] = useState(loadNotion);
   const c = theme==="dark" ? DARK : LIGHT;
   const todayKey   = new Date().toISOString().split("T")[0];
   const todayCount = sentences.filter(s=>s.date===todayKey).length;
 
+  // 사파리 대응: 앱 시작 시 IndexedDB에서도 노션 설정 복원 시도
+  useEffect(()=>{
+    const cur = loadNotion();
+    if(!cur.apiKey && !cur.dbId){
+      loadNotionFromIDB(cfg => {
+        if(cfg && (cfg.apiKey || cfg.dbId)){
+          setNotionCfg(cfg);
+          // localStorage/sessionStorage에도 다시 써줌
+          try{ localStorage.setItem(NOTION_KEY, JSON.stringify(cfg)); }catch{}
+          try{ sessionStorage.setItem(NOTION_KEY, JSON.stringify(cfg)); }catch{}
+        }
+      });
+    }
+  },[]);
+
   useEffect(()=>{ document.body.style.background=c.bg; },[theme]);
 
   const toggleTheme=()=>{ const n=theme==="dark"?"light":"dark"; setTheme(n); saveTheme(n); };
-  const addSentences=items=>{ const u=[...sentences,...items]; setSentences(u); save(u); };
+  const addSentences=async items=>{
+    const date=new Date().toISOString().split("T")[0];
+    const withDate=items.map(s=>({...s,date,reviewed:false}));
+    const u=[...sentences,...withDate]; setSentences(u); save(u);
+    // 노션 자동 전송
+    if(notionCfg.enabled&&notionCfg.apiKey&&notionCfg.dbId){
+      for(const s of withDate){
+        try{ await sendToNotion(s,notionCfg); }catch(e){ console.warn("Notion sync error:",e.message); }
+      }
+    }
+  };
   const deleteSentence=id=>{ const u=sentences.filter(s=>s.id!==id); setSentences(u); save(u); };
+
+  const titles={list:"📚 내 문장 목록",add:"✏️ 오늘의 문장",quiz:"🎯 문제 풀기",settings:"⚙️ 노션 설정"};
 
   return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:c.bg,color:c.text,transition:"background 0.25s,color 0.25s"}}>
       <Header tab={tab} todayCount={todayCount} total={sentences.length}
         c={c} theme={theme} onToggle={toggleTheme}
-        onExport={()=>exportToExcel(sentences)} hasData={sentences.length>0}/>
+        onExport={()=>exportToExcel(sentences)} hasData={sentences.length>0}
+        notionEnabled={notionCfg.enabled}/>
       <div style={{flex:1,overflowY:"auto",paddingBottom:90}}>
-        {tab==="list" && <ListView sentences={sentences} onDelete={deleteSentence} todayKey={todayKey} c={c}/>}
-        {tab==="add"  && <AddView  todayCount={todayCount} onAdd={addSentences} onDone={()=>setTab("list")} c={c} sentences={sentences}/>}
-        {tab==="quiz" && <QuizView sentences={sentences} c={c}/>}
+        {tab==="list"     && <ListView sentences={sentences} onDelete={deleteSentence} todayKey={todayKey} c={c}/>}
+        {tab==="add"      && <AddView  todayCount={todayCount} onAdd={addSentences} onDone={()=>setTab("list")} c={c} sentences={sentences}/>}
+        {tab==="quiz"     && <QuizView sentences={sentences} c={c}/>}
+        {tab==="settings" && <SettingsView c={c} notionCfg={notionCfg} setNotionCfg={cfg=>{setNotionCfg(cfg);saveNotion(cfg);}}/>}
       </div>
       <BottomTabs tab={tab} setTab={setTab} c={c}/>
     </div>
