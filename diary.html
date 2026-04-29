@@ -2,7 +2,11 @@
 <html lang="ko" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My Daily">
+<meta name="theme-color" content="#0c0c10">
 <title>My Daily</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Playfair+Display:wght@700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -226,10 +230,98 @@ textarea,input,select{font-family:var(--font)}
 .empty-icon{font-size:40px;margin-bottom:10px}
 .empty-text{font-size:13px;line-height:1.8}
 
-@media(min-width:768px){
-  .pg{padding-top:max(env(safe-area-inset-top),28px)}
-  .pg-title{font-size:40px}
-  .habit-item,.todo-item{padding:15px 18px}
+/* ── iOS / 아이폰17프로 + 아이패드에어13 최적화 ── */
+
+/* 스크롤 관성 */
+.pg, .setup { -webkit-overflow-scrolling: touch; overflow-y: auto; }
+
+/* 입력창 iOS 기본 스타일 제거 */
+input, textarea, select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: var(--r-sm);
+  /* 입력시 자동 확대 방지 */
+  font-size: max(16px, 1em);
+}
+
+/* 버튼 최소 터치 영역 44px 보장 */
+.btn-icon { min-width: 44px; min-height: 44px; width: 44px; height: 44px; }
+.h-del, .todo-del, .ex-log-item-del { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.ti { min-height: 50px; padding: 10px 0 8px; }
+
+/* 탭바 블러 효과 */
+.tabbar {
+  background: rgba(23,23,30,0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+[data-theme="light"] .tabbar {
+  background: rgba(255,255,255,0.85);
+}
+
+/* 다이나믹 아일랜드 / 노치 대응 */
+.pg {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+/* 탭바 하단 홈바 영역 */
+.tabbar {
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+}
+.pg {
+  padding-bottom: calc(76px + max(env(safe-area-inset-bottom), 8px));
+}
+
+/* 스크롤바 숨기기 */
+.pg::-webkit-scrollbar, .setup::-webkit-scrollbar { display: none; }
+.pg, .setup { scrollbar-width: none; }
+
+/* 텍스트 선택 방지 (UI 요소) */
+.ti, .repeat-opt, .ex-opt, .hs-btn, .ftab, .habit-item, .todo-item {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 아이폰17프로 (393pt) 최적화 */
+@media (max-width: 430px) {
+  .pg-title { font-size: 28px; }
+  .prog-num { font-size: 24px; }
+  .repeat-opts { gap: 5px; }
+  .repeat-opt { padding: 6px 10px; font-size: 12px; }
+  .ex-opts { gap: 6px; }
+  .ex-opt { padding: 8px 12px; font-size: 12px; }
+  .stat-v { font-size: 22px; }
+  .card { padding: 15px; }
+  .habit-item { padding: 12px 13px; }
+  .inp-row { flex-wrap: wrap; }
+  .prog-row { gap: 8px; }
+  .prog-card { padding: 13px 10px; }
+}
+
+/* 아이패드에어13 (1024pt) 최적화 */
+@media (min-width: 768px) {
+  .pg { padding-top: max(env(safe-area-inset-top), 28px); }
+  .pg-title { font-size: 40px; }
+  .habit-item, .todo-item { padding: 15px 18px; }
+  .prog-card { padding: 20px; }
+  .prog-num { font-size: 34px; }
+  .stat-v { font-size: 28px; }
+  .card { padding: 22px; }
+  .h-name, .todo-text { font-size: 15px; }
+  .repeat-opt, .ex-opt { padding: 9px 18px; font-size: 14px; }
+  .tabbar-inner { max-width: 600px; }
+  .ti { font-size: 11px; }
+  .ti-icon { font-size: 24px; }
+  .save-btn { padding: 17px; font-size: 16px; }
+  .setup-cards { max-width: 560px; }
+}
+
+/* 가로 모드 대응 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .tabbar { display: none; }
+  .pg { padding-bottom: 20px; }
 }
 </style>
 </head>
