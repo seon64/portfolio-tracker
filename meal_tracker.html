@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="theme-color" content="#ffffff" id="themeColorMeta" />
+<title>식사 기록</title>
+<style>
+:root {
+  --bg:      #f2f2f7;
+  --bg-card: #ffffff;
+  --bg-input:#f2f2f7;
+  --bg-tab:  #e5e5ea;
+  --text:    #1c1c1e;
+  --text2:   #6c6c70;
+  --text3:   #aeaeb2;
+  --sep:     rgba(60,60,67,0.12);
+  --sep2:    rgba(60,60,67,0.22);
+  --accent:  #5856d6;
+  --accent2: #4645b0;
+  --green:   #34c759;
+  --red:     #ff3b30;
+  --r:       12px;
+  --r-lg:    18px;
+  --r-pill:  999px;
+  --safe-top:  env(safe-area-inset-top, 0px);
+  --safe-bot:  env(safe-area-inset-bottom, 0px);
+}
+[data-theme="dark"] {
+  --bg:      #000000;
+  --bg-card: #1c1c1e;
+  --bg-input:#2c2c2e;
+  --bg-tab:  #2c2c2e;
+  --text:    #ffffff;
+  --text2:   #aeaeb2;
+  --text3:   #636366;
+  --sep:     rgba(255,255,255,0.1);
+  --sep2:    rgba(255,255,255,0.18);
+  --accent:  #7674f5;
+  --accent2: #5856d6;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html { font-size:16px; }
+body {
+  font-family: -apple-system,'SF Pro Text','Pretendard',sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  overflow-x: hidden;
+  padding-bottom: calc(68px + var(--safe-bot));
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ── 상단 바 ── */
+.top-bar {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg-card);
+  border-bottom: 0.5px solid var(--sep);
+  padding: calc(var(--safe-top) + 14px) 16px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  transition: background 0.2s;
+}
+.top-title { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; }
+.top-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+.theme-btn {
+  width: 52px; height: 30px; border-radius: var(--r-pill);
+  background: var(--bg-tab); border: none; cursor: pointer;
+  position: relative; transition: background 0.25s; flex-shrink: 0;
+  display: flex; align-items: center; padding: 3px;
+}
+.theme-btn::after {
+  content: ''; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--bg-card); box-shadow: 0 1px 4px rgba(0,0,0,0.28);
+  transition: transform 0.25s cubic-bezier(.4,0,.2,1); display: block;
+}
+[data-theme="dark"] .theme-btn { background: var(--accent); }
+[data-theme="dark"] .theme-btn::after { transform: translateX(22px); }
+.theme-icons { position: absolute; width: 100%; display: flex; justify-content: space-between; padding: 0 5px; font-size: 11px; pointer-events: none; }
+
+/* ── 스크롤 영역 ── */
+.scroll { padding: 14px 16px 0; }
+
+/* ── Notion 배너 ── */
+.notion-banner { background: var(--bg-card); border-radius: var(--r-lg); margin-bottom: 12px; overflow: hidden; }
+.notion-hd { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; user-select: none; }
+.notion-hd .ni { font-size: 18px; }
+.notion-hd .nt { font-size: 15px; font-weight: 500; flex: 1; }
+.n-status { display: flex; align-items: center; gap: 5px; }
+.n-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+.n-dot.on { background: var(--green); }
+.n-dot-lbl { font-size: 12px; color: var(--text2); }
+.chev { font-size: 11px; color: var(--text3); transition: transform 0.2s; margin-left: 4px; }
+.chev.open { transform: rotate(180deg); }
+.notion-body { border-top: 0.5px solid var(--sep); padding: 14px 16px; display: none; flex-direction: column; gap: 10px; }
+.notion-body.show { display: flex; }
+.notion-body input {
+  width: 100%; font-size: 14px; padding: 12px 13px;
+  border: none; border-radius: var(--r); background: var(--bg-input);
+  color: var(--text); font-family: inherit; -webkit-appearance: none;
+}
+.notion-body input::placeholder { color: var(--text3); }
+.notion-body input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.conn-btn {
+  width: 100%; padding: 14px; font-size: 16px; font-weight: 700;
+  border-radius: var(--r); border: none; background: var(--accent);
+  color: #fff; cursor: pointer; -webkit-appearance: none;
+}
+.conn-btn:active { opacity: 0.85; transform: scale(0.99); }
+
+/* ── 달력 카드 ── */
+.cal-card { background: var(--bg-card); border-radius: var(--r-lg); padding: 16px; margin-bottom: 14px; }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.cal-nav button {
+  background: var(--bg-tab); border: none; border-radius: 50%;
+  width: 34px; height: 34px; font-size: 18px; color: var(--text2);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.cal-nav button:active { opacity: 0.6; }
+.month-title { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; }
+.dows { display: grid; grid-template-columns: repeat(7,1fr); margin-bottom: 4px; }
+.dow { text-align: center; font-size: 11px; font-weight: 600; color: var(--text3); padding: 4px 0; }
+.dow.sun { color: var(--red); }
+.dow.sat { color: #007aff; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+.day {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 15px; border-radius: 50%; cursor: pointer;
+  position: relative; color: var(--text); user-select: none; -webkit-user-select: none;
+}
+.day:active { opacity: 0.6; }
+.day.empty { cursor: default; pointer-events: none; }
+.day.sun { color: var(--red); }
+.day.sat { color: #007aff; }
+.day.today { font-weight: 800; color: var(--accent); }
+.day.selected { background: var(--accent); color: #fff !important; font-weight: 700; }
+.day.has-data::after {
+  content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--green);
+}
+.day.selected.has-data::after { background: rgba(255,255,255,0.85); }
+
+/* ── 섹션 헤더 ── */
+.sec-hd { display: flex; align-items: baseline; justify-content: space-between; padding: 0 2px; margin-bottom: 10px; }
+.date-lbl { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+.cnt-badge { font-size: 12px; color: var(--text2); }
+
+/* ── 식사 탭 ── */
+.meal-tabs-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-bottom: 12px; }
+.meal-tabs-wrap::-webkit-scrollbar { display: none; }
+.meal-tabs { display: flex; gap: 8px; padding-bottom: 2px; }
+.mtab {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 600; padding: 8px 16px;
+  border-radius: var(--r-pill); border: none; cursor: pointer;
+  background: var(--bg-card); color: var(--text2);
+  box-shadow: 0 0 0 0.5px var(--sep2);
+  white-space: nowrap; flex-shrink: 0;
+  -webkit-appearance: none; transition: all 0.15s;
+}
+.mtab.active { background: var(--accent); color: #fff; box-shadow: none; }
+.mtab:active { transform: scale(0.95); }
+
+/* ── 입력 카드 ── */
+.input-card { background: var(--bg-card); border-radius: var(--r-lg); padding: 14px; margin-bottom: 12px; }
+
+.photo-zone {
+  border: 1.5px dashed var(--sep2); border-radius: var(--r);
+  min-height: 100px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 6px; margin-bottom: 12px;
+  position: relative; overflow: hidden; transition: border-color 0.15s;
+}
+.photo-zone:active { opacity: 0.85; }
+.photo-zone.has-photo { border-style: solid; border-color: var(--sep); min-height: unset; }
+.photo-zone img { width: 100%; max-height: 240px; object-fit: cover; border-radius: calc(var(--r) - 2px); display: none; }
+.photo-zone.has-photo img { display: block; }
+.photo-zone.has-photo .ph { display: none; }
+.photo-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+.ph { color: var(--text3); font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.ph-ico { font-size: 32px; }
+.photo-del {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  background: rgba(0,0,0,0.6); color: #fff; border: none;
+  border-radius: 50%; width: 28px; height: 28px;
+  font-size: 13px; cursor: pointer; display: none;
+  align-items: center; justify-content: center;
+}
+.photo-zone.has-photo .photo-del { display: flex; }
+
+.note {
+  width: 100%; font-size: 15px; line-height: 1.65;
+  padding: 12px 13px; border: none; border-radius: var(--r);
+  background: var(--bg-input); color: var(--text);
+  resize: none; min-height: 90px; font-family: inherit;
+  margin-bottom: 10px; -webkit-appearance: none;
+}
+.note:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.note::placeholder { color: var(--text3); }
+
+.meta-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.meta-row input {
+  flex: 1; font-size: 14px; padding: 12px 13px;
+  border: none; border-radius: var(--r); background: var(--bg-input);
+  color: var(--text); font-family: inherit; -webkit-appearance: none; min-width: 0;
+}
+.meta-row input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.meta-row input::placeholder { color: var(--text3); }
+
+.save-btn {
+  width: 100%; padding: 16px; font-size: 16px; font-weight: 700;
+  border-radius: var(--r); border: none; background: var(--accent);
+  color: #fff; cursor: pointer; letter-spacing: -0.2px; -webkit-appearance: none;
+}
+.save-btn:active { transform: scale(0.98); opacity: 0.88; }
+
+/* ── 저장 목록 ── */
+.saved-section { margin-bottom: 4px; }
+.saved-title { font-size: 13px; font-weight: 700; color: var(--text2); padding: 0 2px; margin-bottom: 8px; letter-spacing: 0.02em; text-transform: uppercase; font-size: 11px; }
+.saved-list { border-radius: var(--r-lg); overflow: hidden; display: flex; flex-direction: column; gap: 0.5px; background: var(--sep); }
+.si {
+  background: var(--bg-card);
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 13px 14px;
+}
+.si-ico { font-size: 24px; flex-shrink: 0; line-height: 1; margin-top: 1px; }
+.si-body { flex: 1; min-width: 0; }
+.si-lbl { font-size: 11px; color: var(--text2); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.si-txt { font-size: 14px; color: var(--text); white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
+.si-img { width: 62px; height: 62px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+.si-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; padding: 0 2px; flex-shrink: 0; }
+.si-del:active { color: var(--red); transform: scale(1.2); }
+
+.empty-card { background: var(--bg-card); border-radius: var(--r-lg); padding: 36px 20px; text-align: center; color: var(--text3); font-size: 14px; line-height: 1.9; }
+.empty-card .e-ico { font-size: 40px; margin-bottom: 8px; }
+
+/* ── 하단 탭바 ── */
+.bottom-bar {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 430px;
+  background: var(--bg-card); border-top: 0.5px solid var(--sep);
+  padding: 8px 0 calc(var(--safe-bot) + 4px);
+  display: flex; z-index: 200;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  transition: background 0.2s;
+}
+.btab {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 3px; border: none; background: none; cursor: pointer;
+  color: var(--text3); font-size: 10px; font-weight: 500;
+  padding: 4px 0; -webkit-appearance: none;
+}
+.btab .bico { font-size: 22px; }
+.btab.active { color: var(--accent); }
+.btab:active { opacity: 0.6; }
+
+/* ── 뷰 ── */
+.view { display: none; }
+.view.show { display: block; }
+
+/* ── 통계 ── */
+.stat-card { background: var(--bg-card); border-radius: var(--r-lg); padding: 16px; margin-bottom: 12px; }
+.stat-card h3 { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat-item { background: var(--bg-input); border-radius: var(--r); padding: 14px; }
+.stat-item .s-val { font-size: 24px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+.stat-item .s-lbl { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.bar-ico { font-size: 18px; width: 26px; text-align: center; }
+.bar-track { flex: 1; height: 7px; background: var(--bg-input); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.4s ease; }
+.bar-cnt { font-size: 13px; color: var(--text2); width: 22px; text-align: right; font-weight: 600; }
+
+/* ── 설정 ── */
+.settings-group { background: var(--bg-card); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 12px; }
+.s-row { display: flex; align-items: center; gap: 12px; padding: 15px 16px; border-bottom: 0.5px solid var(--sep); }
+.s-row:last-child { border-bottom: none; }
+.s-ico { font-size: 20px; width: 28px; text-align: center; }
+.s-body { flex: 1; }
+.s-title { font-size: 15px; font-weight: 500; }
+.s-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.ios-toggle {
+  width: 51px; height: 31px; border-radius: var(--r-pill);
+  background: var(--bg-tab); border: none; cursor: pointer;
+  position: relative; transition: background 0.25s; flex-shrink: 0;
+}
+.ios-toggle::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 25px; height: 25px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+}
+.ios-toggle.on { background: var(--green); }
+.ios-toggle.on::after { transform: translateX(20px); }
+.del-btn { background: none; border: none; color: var(--red); font-size: 14px; font-weight: 600; cursor: pointer; }
+.del-btn:active { opacity: 0.6; }
+
+.guide-card { background: var(--bg-card); border-radius: var(--r-lg); padding: 16px; margin-bottom: 12px; }
+.guide-card h3 { font-size: 11px; font-weight: 700; color: var(--text2); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+.guide-row { font-size: 14px; color: var(--text); padding: 6px 0; border-bottom: 0.5px solid var(--sep); display: flex; gap: 10px; }
+.guide-row:last-child { border-bottom: none; }
+.guide-row .g-key { color: var(--text2); font-size: 13px; min-width: 80px; }
+
+/* ── 토스트 ── */
+.toast {
+  position: fixed; bottom: calc(78px + var(--safe-bot)); left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(28,28,30,0.9); color: #fff;
+  font-size: 14px; font-weight: 600; padding: 12px 22px;
+  border-radius: var(--r-pill); opacity: 0; pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s; z-index: 999;
+  white-space: nowrap; backdrop-filter: blur(12px);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+[data-theme="dark"] .toast { background: rgba(72,72,74,0.92); }
+</style>
+</head>
+<body>
+
+<!-- 상단 바 -->
+<div class="top-bar">
+  <div>
+    <div class="top-title">🥗 식사 기록</div>
+    <div class="top-sub">아침 · 점심 · 저녁 · 간식 · 야식</div>
+  </div>
+  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="다크모드 전환">
+    <span class="theme-icons"><span>☀️</span><span>🌙</span></span>
+  </button>
+</div>
+
+<!-- ═══ 홈 뷰 ═══ -->
+<div class="view show scroll" id="viewHome">
+
+  <!-- Notion 배너 -->
+  <div class="notion-banner">
+    <div class="notion-hd" onclick="toggleNotion()">
+      <span class="ni">◻</span>
+      <span class="nt">Notion 연동</span>
+      <div class="n-status">
+        <div class="n-dot" id="nDot"></div>
+        <span class="n-dot-lbl" id="nLbl">미연결</span>
+      </div>
+      <span class="chev" id="nChev">▼</span>
+    </div>
+    <div class="notion-body" id="notionBody">
+      <input type="password" id="nKey" placeholder="Integration Token  (secret_...)" autocomplete="off" />
+      <input type="text" id="nDb" placeholder="Database ID  (32자리)" autocomplete="off" />
+      <button class="conn-btn" id="notionConnBtn" onclick="nConn?disconnectNotion():connectNotion()">연결하기</button>
+    </div>
+  </div>
+
+  <!-- 달력 -->
+  <div class="cal-card">
+    <div class="cal-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <span class="month-title" id="calTitle"></span>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="dows">
+      <div class="dow sun">일</div>
+      <div class="dow">월</div><div class="dow">화</div>
+      <div class="dow">수</div><div class="dow">목</div><div class="dow">금</div>
+      <div class="dow sat">토</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <!-- 날짜 헤더 -->
+  <div class="sec-hd">
+    <span class="date-lbl" id="dateLbl">날짜를 선택하세요</span>
+    <span class="cnt-badge" id="cntBadge"></span>
+  </div>
+
+  <!-- 식사 탭 -->
+  <div class="meal-tabs-wrap">
+    <div class="meal-tabs">
+      <button class="mtab active" onclick="pickMeal('아침','☀️',this)">☀️ 아침</button>
+      <button class="mtab" onclick="pickMeal('점심','🌤️',this)">🌤️ 점심</button>
+      <button class="mtab" onclick="pickMeal('저녁','🌙',this)">🌙 저녁</button>
+      <button class="mtab" onclick="pickMeal('간식','🍎',this)">🍎 간식</button>
+      <button class="mtab" onclick="pickMeal('야식','🌚',this)">🌚 야식</button>
+    </div>
+  </div>
+
+  <!-- 입력 카드 -->
+  <div class="input-card">
+    <div class="photo-zone" id="photoZone" onclick="document.getElementById('pFile').click()">
+      <div class="ph">
+        <div class="ph-ico">📷</div>
+        <div>사진 추가</div>
+      </div>
+      <img id="pPreview" alt="식사 사진" />
+      <button class="photo-del" onclick="clearPhoto(event)">✕</button>
+      <input type="file" id="pFile" accept="image/*" onchange="handlePhoto(event)" />
+    </div>
+    <textarea class="note" id="noteInput" rows="3" placeholder="메뉴, 맛, 양 등 자유롭게 기록…"></textarea>
+    <div class="meta-row">
+      <input type="number" id="calIn" placeholder="칼로리 kcal" min="0" inputmode="numeric" />
+      <input type="time" id="timeIn" />
+    </div>
+    <button class="save-btn" onclick="saveMeal()">저장하기</button>
+  </div>
+
+  <!-- 저장 목록 -->
+  <div class="saved-section">
+    <div class="saved-title" id="savedTitle"></div>
+    <div id="savedList"></div>
+  </div>
+  <div style="height:10px"></div>
+</div>
+
+<!-- ═══ 통계 뷰 ═══ -->
+<div class="view scroll" id="viewStats">
+  <div class="stat-card">
+    <h3>이번 달 요약</h3>
+    <div class="stat-grid">
+      <div class="stat-item"><div class="s-val" id="stDays">-</div><div class="s-lbl">기록한 날</div></div>
+      <div class="stat-item"><div class="s-val" id="stMeals">-</div><div class="s-lbl">총 식사 수</div></div>
+      <div class="stat-item"><div class="s-val" id="stCal">-</div><div class="s-lbl">평균 칼로리</div></div>
+      <div class="stat-item"><div class="s-val" id="stPhotos">-</div><div class="s-lbl">사진 기록</div></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <h3>식사별 기록 횟수</h3>
+    <div id="mealBars"></div>
+  </div>
+  <div style="height:10px"></div>
+</div>
+
+<!-- ═══ 설정 뷰 ═══ -->
+<div class="view scroll" id="viewSettings">
+  <div class="settings-group">
+    <div class="s-row">
+      <span class="s-ico">🌙</span>
+      <div class="s-body"><div class="s-title">다크 모드</div><div class="s-sub">어두운 배경으로 전환</div></div>
+      <button class="ios-toggle" id="darkToggle" onclick="toggleTheme()"></button>
+    </div>
+    <div class="s-row">
+      <span class="s-ico">🗑️</span>
+      <div class="s-body"><div class="s-title">전체 데이터 삭제</div><div class="s-sub">저장된 모든 기록 제거</div></div>
+      <button class="del-btn" onclick="clearAll()">삭제</button>
+    </div>
+    <div class="s-row">
+      <span class="s-ico">📱</span>
+      <div class="s-body"><div class="s-title">식사 기록 앱</div><div class="s-sub">iPhone 17 최적화 · v1.0</div></div>
+    </div>
+  </div>
+
+  <div class="guide-card">
+    <h3>Notion DB 컬럼 가이드</h3>
+    <div class="guide-row"><span class="g-key">날짜</span><span>Date 유형</span></div>
+    <div class="guide-row"><span class="g-key">식사 종류</span><span>Select 유형</span></div>
+    <div class="guide-row"><span class="g-key">메모</span><span>Text 유형</span></div>
+    <div class="guide-row"><span class="g-key">칼로리</span><span>Number 유형</span></div>
+    <div class="guide-row"><span class="g-key">시간</span><span>Text 유형</span></div>
+  </div>
+  <div style="height:10px"></div>
+</div>
+
+<!-- 하단 탭바 -->
+<nav class="bottom-bar">
+  <button class="btab active" id="bt0" onclick="switchView(0)">
+    <span class="bico">📅</span><span>홈</span>
+  </button>
+  <button class="btab" id="bt1" onclick="switchView(1)">
+    <span class="bico">📊</span><span>통계</span>
+  </button>
+  <button class="btab" id="bt2" onclick="switchView(2)">
+    <span class="bico">⚙️</span><span>설정</span>
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const MEAL_ORDER=['아침','점심','저녁','간식','야식'];
+const MEAL_ICON={아침:'☀️',점심:'🌤️',저녁:'🌙',간식:'🍎',야식:'🌚'};
+let cy,cm,selDate=null,curMeal='아침',curPhoto=null;
+let nConn=false;
+let nKeyVal=localStorage.getItem('notionKey')||'';
+let nDbVal=localStorage.getItem('notionDb')||'';
+let db={};
+try{db=JSON.parse(localStorage.getItem('mealDB')||'{}');}catch(e){}
+function saveDb(){try{localStorage.setItem('mealDB',JSON.stringify(db));}catch(e){}}
+
+/* 테마 */
+const initTheme=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+applyTheme(initTheme);
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  document.getElementById('themeColorMeta').content=t==='dark'?'#000000':'#ffffff';
+  const dt=document.getElementById('darkToggle');
+  if(dt){dt.classList.toggle('on',t==='dark');}
+  localStorage.setItem('theme',t);
+}
+function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');}
+
+/* 뷰 전환 */
+const VIEWS=['viewHome','viewStats','viewSettings'];
+const BTABS=['bt0','bt1','bt2'];
+function switchView(i){
+  VIEWS.forEach((v,j)=>{document.getElementById(v).classList.toggle('show',j===i);document.getElementById(BTABS[j]).classList.toggle('active',j===i);});
+  if(i===1)renderStats();
+}
+
+/* 토스트 */
+function toast(msg,d=2400){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),d);
+}
+
+/* Notion */
+function toggleNotion(){
+  document.getElementById('notionBody').classList.toggle('show');
+  document.getElementById('nChev').classList.toggle('open');
+}
+function connectNotion(){
+  nKeyVal=document.getElementById('nKey').value.trim();
+  nDbVal=document.getElementById('nDb').value.trim();
+  if(!nKeyVal||!nDbVal){toast('Token과 DB ID를 입력해주세요');return;}
+  nConn=true;
+  localStorage.setItem('notionKey',nKeyVal);
+  localStorage.setItem('notionDb',nDbVal);
+  updateNotionStatus(true);
+  document.getElementById('notionBody').classList.remove('show');
+  document.getElementById('nChev').classList.remove('open');
+  toast('노션 연결 완료 ✓ — 새로고침해도 유지돼요');
+}
+function disconnectNotion(){
+  nConn=false;nKeyVal='';nDbVal='';
+  localStorage.removeItem('notionKey');
+  localStorage.removeItem('notionDb');
+  document.getElementById('nKey').value='';
+  document.getElementById('nDb').value='';
+  updateNotionStatus(false);
+  toast('노션 연결이 해제됐어요');
+}
+function updateNotionStatus(connected){
+  nConn=connected;
+  document.getElementById('nDot').classList.toggle('on',connected);
+  document.getElementById('nLbl').textContent=connected?'연결됨':'미연결';
+  const btn=document.getElementById('notionConnBtn');
+  if(btn){btn.textContent=connected?'연결 해제':'연결하기';btn.style.background=connected?'var(--red)':'var(--accent)';}
+}
+async function syncNotion(date,meal,data){
+  if(!nConn)return;
+  try{
+    const r=await fetch('https://api.notion.com/v1/pages',{
+      method:'POST',
+      headers:{'Authorization':`Bearer ${nKeyVal}`,'Content-Type':'application/json','Notion-Version':'2022-06-28'},
+      body:JSON.stringify({parent:{database_id:nDbVal},properties:{
+        '날짜':{date:{start:date}},'식사 종류':{select:{name:meal}},
+        '메모':{rich_text:[{text:{content:data.note||''}}]},
+        '칼로리':data.cal?{number:parseInt(data.cal)}:{number:null},
+        '시간':{rich_text:[{text:{content:data.time||''}}]}
+      }})
+    });
+    toast(r.ok?'노션에도 저장됐어요 ✓':'노션 저장 실패 — 설정 확인');
+  }catch(e){toast('노션 동기화 오류');}
+}
+
+/* 달력 */
+function dKey(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function buildCal(){
+  document.getElementById('calTitle').textContent=`${cy}년 ${cm+1}월`;
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML='';
+  const first=new Date(cy,cm,1).getDay();
+  const total=new Date(cy,cm+1,0).getDate();
+  const today=new Date();
+  for(let i=0;i<first;i++){const e=document.createElement('div');e.className='day empty';grid.appendChild(e);}
+  for(let d=1;d<=total;d++){
+    const e=document.createElement('div');
+    const dow=(first+d-1)%7;
+    let cls='day';
+    if(dow===0)cls+=' sun';
+    if(dow===6)cls+=' sat';
+    const k=dKey(cy,cm,d);
+    if(db[k]&&Object.keys(db[k]).length)cls+=' has-data';
+    if(cy===today.getFullYear()&&cm===today.getMonth()&&d===today.getDate())cls+=' today';
+    if(selDate===k)cls+=' selected';
+    e.className=cls;e.textContent=d;
+    e.onclick=()=>selectDate(cy,cm,d);
+    grid.appendChild(e);
+  }
+}
+function changeMonth(dir){cm+=dir;if(cm<0){cy--;cm=11;}if(cm>11){cy++;cm=0;}buildCal();}
+function selectDate(y,m,d){
+  selDate=dKey(y,m,d);
+  const DOW=['일','월','화','수','목','금','토'];
+  document.getElementById('dateLbl').textContent=`${m+1}월 ${d}일 (${DOW[new Date(y,m,d).getDay()]})`;
+  buildCal();renderSaved();clearForm();
+}
+
+/* 식사 탭 */
+function pickMeal(name,icon,el){
+  curMeal=name;
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  clearForm();if(selDate)renderSaved();
+}
+
+/* 사진 */
+function handlePhoto(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{curPhoto=ev.target.result;document.getElementById('pPreview').src=curPhoto;document.getElementById('photoZone').classList.add('has-photo');};
+  r.readAsDataURL(f);
+}
+function clearPhoto(e){
+  e.stopPropagation();curPhoto=null;
+  document.getElementById('photoZone').classList.remove('has-photo');
+  document.getElementById('pPreview').src='';
+  document.getElementById('pFile').value='';
+}
+function clearForm(){
+  document.getElementById('noteInput').value='';
+  document.getElementById('calIn').value='';
+  document.getElementById('timeIn').value='';
+  clearPhoto({stopPropagation:()=>{}});
+}
+
+/* 저장 */
+function saveMeal(){
+  if(!selDate){toast('날짜를 먼저 선택해주세요 📅');return;}
+  const note=document.getElementById('noteInput').value.trim();
+  const cal=document.getElementById('calIn').value;
+  const time=document.getElementById('timeIn').value;
+  if(!note&&!curPhoto){toast('내용이나 사진을 입력해주세요');return;}
+  if(!db[selDate])db[selDate]={};
+  db[selDate][curMeal]={note,cal,time,photo:curPhoto,at:new Date().toISOString()};
+  saveDb();buildCal();renderSaved();
+  syncNotion(selDate,curMeal,{note,cal,time});
+  clearForm();toast(`${MEAL_ICON[curMeal]} ${curMeal} 저장 완료!`);
+}
+function deleteMeal(meal){
+  if(!selDate||!db[selDate])return;
+  delete db[selDate][meal];
+  if(!Object.keys(db[selDate]).length)delete db[selDate];
+  saveDb();buildCal();renderSaved();toast(`${MEAL_ICON[meal]} ${meal} 삭제됨`);
+}
+
+/* 목록 렌더 */
+function renderSaved(){
+  const c=document.getElementById('savedList');
+  const tt=document.getElementById('savedTitle');
+  const cb=document.getElementById('cntBadge');
+  c.innerHTML='';
+  if(!selDate||!db[selDate]){
+    tt.textContent='';cb.textContent='';
+    c.innerHTML=`<div class="empty-card"><div class="e-ico">🍽️</div><div>아직 기록이 없어요<br>위에서 식사를 기록해보세요</div></div>`;return;
+  }
+  const day=db[selDate];
+  const keys=MEAL_ORDER.filter(k=>day[k]);
+  tt.textContent=keys.length?`오늘의 식사 ${keys.length}건`:'';
+  cb.textContent=keys.length?`${keys.length}건`:'';
+  if(!keys.length){c.innerHTML=`<div class="empty-card"><div class="e-ico">🍽️</div><div>아직 기록이 없어요<br>위에서 식사를 기록해보세요</div></div>`;return;}
+  const list=document.createElement('div');list.className='saved-list';
+  keys.forEach(meal=>{
+    const d=day[meal];
+    const el=document.createElement('div');el.className='si';
+    let meta='';if(d.time)meta+=d.time;if(d.cal)meta+=(meta?' · ':'')+Number(d.cal).toLocaleString()+' kcal';
+    el.innerHTML=`
+      <div class="si-ico">${MEAL_ICON[meal]}</div>
+      <div class="si-body">
+        <div class="si-lbl">${meal}${meta?' &nbsp;·&nbsp; '+meta:''}</div>
+        <div class="si-txt">${d.note?d.note.replace(/</g,'&lt;'):'<span style="color:var(--text3)">(메모 없음)</span>'}</div>
+      </div>
+      ${d.photo?`<img class="si-img" src="${d.photo}" alt="${meal}"/>`:''}
+      <button class="si-del" onclick="deleteMeal('${meal}')">✕</button>`;
+    list.appendChild(el);
+  });
+  c.appendChild(list);
+}
+
+/* 통계 */
+function renderStats(){
+  const now=new Date();
+  const pfx=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const mk=Object.keys(db).filter(k=>k.startsWith(pfx));
+  let totalM=0,totalC=0,cCnt=0,totalP=0;
+  const mc={아침:0,점심:0,저녁:0,간식:0,야식:0};
+  mk.forEach(k=>{MEAL_ORDER.forEach(m=>{if(db[k][m]){totalM++;mc[m]++;if(db[k][m].cal){totalC+=parseInt(db[k][m].cal);cCnt++;}if(db[k][m].photo)totalP++;}});});
+  document.getElementById('stDays').textContent=mk.length||'-';
+  document.getElementById('stMeals').textContent=totalM||'-';
+  document.getElementById('stCal').textContent=cCnt?Math.round(totalC/cCnt).toLocaleString():'-';
+  document.getElementById('stPhotos').textContent=totalP||'-';
+  const mx=Math.max(...Object.values(mc),1);
+  document.getElementById('mealBars').innerHTML=MEAL_ORDER.map(m=>`
+    <div class="bar-row">
+      <span class="bar-ico">${MEAL_ICON[m]}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(mc[m]/mx*100)}%"></div></div>
+      <span class="bar-cnt">${mc[m]}</span>
+    </div>`).join('');
+}
+
+/* 전체 삭제 */
+function clearAll(){
+  if(!confirm('모든 식사 기록을 삭제할까요?'))return;
+  db={};saveDb();buildCal();renderSaved();selDate=null;
+  document.getElementById('dateLbl').textContent='날짜를 선택하세요';
+  toast('전체 데이터가 삭제됐어요');
+}
+
+/* 초기화 */
+const now=new Date();
+cy=now.getFullYear();cm=now.getMonth();
+buildCal();selectDate(cy,cm,now.getDate());
+
+/* 노션 연결 복원 */
+if(nKeyVal&&nDbVal){
+  document.getElementById('nKey').value=nKeyVal;
+  document.getElementById('nDb').value=nDbVal;
+  updateNotionStatus(true);
+}
+</script>
+</body>
+</html>
