@@ -1067,7 +1067,13 @@ function SettingsView({c, notionCfg, setNotionCfg}){
           <div style={{fontSize:14,fontWeight:700,color:c.text}}>노션 자동 저장</div>
           <div style={{fontSize:11,color:c.textMuted,marginTop:2}}>저장 시 노션 DB에 자동 추가</div>
         </div>
-        <button onClick={()=>setEnabled(e=>!e)} className="btn-press"
+        <button onClick={()=>{
+            const next = !enabled;
+            setEnabled(next);
+            // 토글 즉시 반영 — 저장 버튼 안 눌러도 됨
+            const cfg={apiKey:apiKey.trim(), dbId:dbId.trim(), enabled:next};
+            setNotionCfg(cfg); saveNotion(cfg);
+          }} className="btn-press"
           style={{width:48,height:26,borderRadius:13,border:"none",cursor:"pointer",
             background:enabled?c.accent:"rgba(255,255,255,0.1)",position:"relative",transition:"background 0.2s"}}>
           <div style={{position:"absolute",top:3,left:enabled?26:3,width:20,height:20,
@@ -1079,6 +1085,7 @@ function SettingsView({c, notionCfg, setNotionCfg}){
       <div style={{marginBottom:14}}>
         <div style={{fontSize:11,color:c.textMuted,letterSpacing:1}}>🔑 Notion API Key (Integration Token)</div>
         <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)}
+          onBlur={()=>{ const cfg={apiKey:apiKey.trim(),dbId:dbId.trim(),enabled}; setNotionCfg(cfg); saveNotion(cfg); }}
           placeholder="secret_xxxxxxxxxxxxxxxxxxxx"
           style={inputStyle}/>
       </div>
@@ -1087,6 +1094,7 @@ function SettingsView({c, notionCfg, setNotionCfg}){
       <div style={{marginBottom:20}}>
         <div style={{fontSize:11,color:c.textMuted,letterSpacing:1}}>🗄️ Database ID</div>
         <input type="text" value={dbId} onChange={e=>setDbId(e.target.value)}
+          onBlur={()=>{ const cfg={apiKey:apiKey.trim(),dbId:dbId.trim(),enabled}; setNotionCfg(cfg); saveNotion(cfg); }}
           placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           style={inputStyle}/>
         <div style={{fontSize:11,color:c.textMuted,marginTop:5}}>
