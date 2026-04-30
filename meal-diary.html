@@ -832,18 +832,11 @@ async function syncToNotion(dateStr, entry) {
       }
     };
 
-    // Photo upload via proxy (base64 → Notion file block)
+    // 사진은 base64라 노션 external URL 불가 → 로컬에만 저장, 텍스트만 노션 전송
+    // (사진이 있으면 노션 Note에 '[사진 첨부됨]' 표시)
     if (entry.photo) {
-      // Notion doesn't support direct base64 upload; add as external or skip
-      // We'll add photo as a child block comment
-      payload.children = [{
-        object: 'block',
-        type: 'image',
-        image: {
-          type: 'external',
-          external: { url: entry.photo.startsWith('data:') ? '' : entry.photo }
-        }
-      }];
+      const noteWithTag = (entry.text ? entry.text + '\n' : '') + '[📷 사진 첨부됨 — 앱에서 확인]';
+      payload.properties.Note = { rich_text: [{ text: { content: noteWithTag } }] };
     }
 
     const proxyBase = state.notionProxy.replace(/\/$/, '');
