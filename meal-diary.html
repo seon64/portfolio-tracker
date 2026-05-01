@@ -29,6 +29,7 @@
     --meal-late: #e87a8a;
     --radius: 18px;
     --radius-sm: 10px;
+    --weight-color: #a0c4e8;
     --safe-top: env(safe-area-inset-top);
     --safe-bottom: env(safe-area-inset-bottom);
   }
@@ -45,6 +46,7 @@
     --accent: #8a6a3a;
     --accent2: #6a4e28;
     --accent-soft: rgba(138,106,58,0.10);
+    --weight-color: #4a7fa8;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Noto Serif KR', serif; overscroll-behavior: none; }
@@ -420,6 +422,29 @@
   </div>
 </div>
 
+
+<!-- WEIGHT MODAL -->
+<div class="modal-overlay" id="weight-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚖️ 아침 몸무게</div>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px">
+      <input id="weight-input" type="number" step="0.1" min="20" max="300"
+        inputmode="decimal"
+        style="flex:1; background:var(--surface); border:1px solid var(--border);
+               border-radius:var(--radius-sm); padding:16px; font-size:28px;
+               font-family:'DM Mono'; color:var(--text); outline:none;
+               text-align:center; -webkit-appearance:none;"
+        placeholder="00.0">
+      <span style="font-size:20px; color:var(--text2); font-family:'DM Mono'">kg</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="clearWeight()" style="flex:1;padding:14px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--text3);font-size:14px;cursor:pointer;font-family:'Noto Serif KR'">삭제</button>
+      <button onclick="saveWeight()" style="flex:2;padding:14px;border-radius:var(--radius);background:var(--weight-color);color:white;font-size:15px;font-weight:600;border:none;cursor:pointer;font-family:'Noto Serif KR'">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD ENTRY MODAL -->
 <div class="modal-overlay" id="add-modal">
   <div class="modal">
@@ -465,6 +490,7 @@ let state = {
   notionProxy: '',
   connStatus: 'none', // none | connected | error
   entries: {}, // { 'YYYY-MM-DD': [{ id, meal, text, photo, time }] }
+  weights: {}, // { 'YYYY-MM-DD': '72.5' }
 };
 
 // ── STORAGE ────────────────────────────────────────────────────────────────
@@ -495,7 +521,7 @@ function saveState() {
       const slim = JSON.parse(JSON.stringify(state.entries));
       Object.values(slim).forEach(day => day.forEach(entry => { entry.photo = null; }));
       try {
-        localStorage.setItem('meal-diary-v1', JSON.stringify({ ...data, entries: slim }));
+        localStorage.setItem('meal-diary-v1', JSON.stringify({ ...data, entries: slim, weights: state.weights }));
         showToast('⚠️ 저장공간 부족 — 사진은 재시작 후 사라질 수 있습니다');
       } catch(e2) {
         showToast('저장 실패: 설정에서 캐시를 초기화해주세요');
@@ -613,10 +639,14 @@ function renderCalendar() {
 function getMealDots(dateStr) {
   const entries = state.entries[dateStr] || [];
   const mealIds = [...new Set(entries.map(e => e.meal))];
-  return mealIds.map(mid => {
+  let dots = mealIds.map(mid => {
     const m = MEALS.find(m => m.id === mid);
     return m ? `<span class="cal-dot" style="background:${m.color}"></span>` : '';
   }).join('');
+  if (state.weights[dateStr]) {
+    dots += `<span class="cal-dot" style="background:var(--weight-color)"></span>`;
+  }
+  return dots;
 }
 
 function changeMonth(dir) {
@@ -654,6 +684,19 @@ function renderDayDetail() {
     <div class="day-detail-header">${selectedDate} · ${label}</div>
     <div class="meal-cards">`;
 
+  // ── 몸무게 카드
+  const weightVal = state.weights[selectedDate] || '';
+  html += `<div class="meal-card weight-card">
+    <div class="meal-card-header">
+      <div class="meal-card-left">
+        <span class="meal-badge" style="background:var(--weight-color)"></span>
+        <span class="meal-label">⚖️ 아침 몸무게</span>
+        ${weightVal ? `<span class="meal-count" style="color:var(--weight-color);font-size:13px;font-weight:600">${weightVal} kg</span>` : ''}
+      </div>
+      <button class="meal-add-btn weight-edit-btn" onclick="openWeightModal()" style="border-color:var(--weight-color);color:var(--weight-color)">${weightVal ? '✏' : '＋'}</button>
+    </div>
+  </div>`;
+
   MEALS.forEach(meal => {
     const mealEntries = entries.filter(e => e.meal === meal.id);
     html += `<div class="meal-card">
@@ -685,7 +728,7 @@ function renderDayDetail() {
     html += `</div>`;
   });
 
-  if (entries.length === 0) {
+  if (entries.length === 0 && !state.weights[selectedDate]) {
     html += `<div class="empty-state">
       <div class="empty-icon">🍽</div>
       <div class="empty-text">아직 기록이 없어요<br>＋ 버튼을 눌러 추가하세요</div>
@@ -719,6 +762,9 @@ function closeModal() {
 
 document.getElementById('add-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('add-modal')) closeModal();
+});
+document.getElementById('weight-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('weight-modal')) closeWeightModal();
 });
 
 function renderMealChips() {
@@ -814,6 +860,71 @@ function deleteEntry(dateStr, entryId) {
   saveState();
   renderCalendar();
   showToast('삭제되었습니다');
+}
+
+
+// ── WEIGHT ────────────────────────────────────────────────────────────────
+function openWeightModal() {
+  const existing = state.weights[state.selectedDate] || '';
+  document.getElementById('weight-input').value = existing;
+  document.getElementById('weight-modal').classList.add('open');
+  setTimeout(() => document.getElementById('weight-input').focus(), 350);
+}
+
+function closeWeightModal() {
+  document.getElementById('weight-modal').classList.remove('open');
+}
+
+function saveWeight() {
+  const val = parseFloat(document.getElementById('weight-input').value);
+  if (!val || val < 20 || val > 300) { showToast('올바른 몸무게를 입력하세요'); return; }
+  const rounded = Math.round(val * 10) / 10;
+  state.weights[state.selectedDate] = String(rounded);
+  saveState();
+  renderCalendar();
+  closeWeightModal();
+  showToast(`${rounded} kg 저장됨 ✓`);
+  // Notion sync
+  if (state.notionToken && state.notionDbId && state.notionProxy) {
+    syncWeightToNotion(state.selectedDate, rounded);
+  }
+}
+
+function clearWeight() {
+  if (state.weights[state.selectedDate]) {
+    delete state.weights[state.selectedDate];
+    saveState();
+    renderCalendar();
+    showToast('삭제되었습니다');
+  }
+  closeWeightModal();
+}
+
+async function syncWeightToNotion(dateStr, kg) {
+  setSyncDot('syncing');
+  try {
+    const proxyBase = state.notionProxy.replace(/\/$/, '');
+    const payload = {
+      parent: { database_id: state.notionDbId },
+      properties: {
+        Name: { title: [{ text: { content: `몸무게 - ${dateStr}` } }] },
+        Date: { date: { start: dateStr } },
+        MealType: { select: { name: '몸무게' } },
+        Note: { rich_text: [{ text: { content: `⚖️ ${kg} kg` } }] },
+        Time: { rich_text: [{ text: { content: '아침' } }] },
+      }
+    };
+    const res = await fetch(`${proxyBase}/v1/pages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${state.notionToken}`,
+        'Content-Type': 'application/json',
+        'Notion-Version': '2022-06-28',
+      },
+      body: JSON.stringify(payload),
+    });
+    setSyncDot(res.ok ? 'connected' : 'error');
+  } catch(e) { setSyncDot('error'); }
 }
 
 // ── NOTION SYNC ────────────────────────────────────────────────────────────
