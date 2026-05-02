@@ -533,9 +533,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto S
           <div class="notion-title" id="p-notionPanelTitle">🔗 Notion DB 연동</div>
           <div id="p-notionFormArea">
             <div class="notion-field"><label>Notion Integration Token</label><input type="password" id="p-notionKey" placeholder="secret_xxxx"></div>
-            <div class="notion-field"><label>데이터베이스 ID</label><input type="text" id="p-notionDbId" placeholder="xxxxxxxx..."></div>
-            <button class="notion-save-btn" id="p-notionSaveBtn">저장 및 연결</button>
-            <div class="notion-status" id="p-notionStatus"></div>
+            <div class="notion-field"><label>데이터베이스 ID</label><input type="text" id="p-notionDbId" placeholder="xxxxxxxx-xxxx-..."></div>
+            <div class="notion-field"><label>프록시 주소 (CORS 우회 필수)</label><input type="text" id="p-notionProxy" placeholder="https://my-proxy.example.com"></div>
+            <button class="notion-save-btn" id="p-notionSaveBtn">연결 확인 및 저장</button>
+            <div class="notion-status" id="p-notionStatus" style="font-size:11px;line-height:1.5;margin-top:8px;text-align:left"></div>
           </div>
         </div>
       </div>
@@ -1188,16 +1189,98 @@ function jClearNotionSettings(){
   jUpdateDot('');showToast('노션 설정 초기화');
 }
 async function jSyncToNotion(entry){
-  const c=jGetConfig();if(!c.token||!c.dbId||!c.proxy)return false;
+  const c=jGetConfig();
+  if(!c.token||!c.dbId||!c.proxy)return false;
+  
   try{
-    const qRes=await fetch(`${c.proxy}/v1/databases/${c.dbId}/query`,{method:'POST',headers:{'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'},body:JSON.stringify({filter:{property:'날짜',date:{equals:entry.date}}})});
-    const qData=await qRes.json();const existing=qData.results?.[0];
-    const props={'날짜':{date:{start:entry.date}},'확언 1':{rich_text:[{text:{content:entry.affirmations[0]||''}}]},'확언 2':{rich_text:[{text:{content:entry.affirmations[1]||''}}]},'확언 3':{rich_text:[{text:{content:entry.affirmations[2]||''}}]},'감사 1':{rich_text:[{text:{content:(entry.gratitudes||[])[0]||''}}]},'감사 2':{rich_text:[{text:{content:(entry.gratitudes||[])[1]||''}}]},'감사 3':{rich_text:[{text:{content:(entry.gratitudes||[])[2]||''}}]}};
-    if(entry.mood)props['기분']={select:{name:entry.mood}};
-    if(existing){await fetch(`${c.proxy}/v1/pages/${existing.id}`,{method:'PATCH',headers:{'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'},body:JSON.stringify({properties:props})});}
-    else{const dbRes=await fetch(`${c.proxy}/v1/databases/${c.dbId}`,{headers:{'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28'}});const dbData=await dbRes.json();const titleKey=Object.keys(dbData.properties||{}).find(k=>dbData.properties[k].type==='title')||'이름';await fetch(`${c.proxy}/v1/pages`,{method:'POST',headers:{'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'},body:JSON.stringify({parent:{database_id:c.dbId},properties:{[titleKey]:{title:[{text:{content:entry.date}}]},...props}})});}
+    // 1. DB 스키마 먼저 조회해서 실제 속성명 확인
+    const dbRes=await fetch(`${c.proxy}/v1/databases/${c.dbId}`,{
+      headers:{'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28'}
+    });
+    if(!dbRes.ok){
+      const err=await dbRes.json().catch(()=>({}));
+      console.error('[Notion] DB 조회 실패:', dbRes.status, err);
+      showToast(`노션 오류: ${err.message||dbRes.status}`);
+      return false;
+    }
+    const dbData=await dbRes.json();
+    const props=dbData.properties||{};
+    
+    // 속성명 자동 매핑 (한/영 모두 지원)
+    const findProp=(candidates)=>candidates.find(c=>props[c])||null;
+    
+    const titleKey = Object.keys(props).find(k=>props[k].type==='title') || '이름';
+    const dateKey  = findProp(['날짜','Date','date','일자']);
+    const aff1Key  = findProp(['확언 1','확언1','Affirmation 1','affirmation1']);
+    const aff2Key  = findProp(['확언 2','확언2','Affirmation 2','affirmation2']);
+    const aff3Key  = findProp(['확언 3','확언3','Affirmation 3','affirmation3']);
+    const grat1Key = findProp(['감사 1','감사1','Gratitude 1','gratitude1']);
+    const grat2Key = findProp(['감사 2','감사2','Gratitude 2','gratitude2']);
+    const grat3Key = findProp(['감사 3','감사3','Gratitude 3','gratitude3']);
+    const moodKey  = findProp(['기분','Mood','mood']);
+    
+    // 페이지 속성 구성 (존재하는 속성만)
+    const pageProps={};
+    pageProps[titleKey]={title:[{text:{content:entry.date}}]};
+    if(dateKey) pageProps[dateKey]={date:{start:entry.date}};
+    if(aff1Key) pageProps[aff1Key]={rich_text:[{text:{content:entry.affirmations?.[0]||''}}]};
+    if(aff2Key) pageProps[aff2Key]={rich_text:[{text:{content:entry.affirmations?.[1]||''}}]};
+    if(aff3Key) pageProps[aff3Key]={rich_text:[{text:{content:entry.affirmations?.[2]||''}}]};
+    if(grat1Key) pageProps[grat1Key]={rich_text:[{text:{content:entry.gratitudes?.[0]||''}}]};
+    if(grat2Key) pageProps[grat2Key]={rich_text:[{text:{content:entry.gratitudes?.[1]||''}}]};
+    if(grat3Key) pageProps[grat3Key]={rich_text:[{text:{content:entry.gratitudes?.[2]||''}}]};
+    if(moodKey && entry.mood && props[moodKey]?.type==='select'){
+      pageProps[moodKey]={select:{name:entry.mood}};
+    }else if(moodKey && entry.mood && props[moodKey]?.type==='rich_text'){
+      pageProps[moodKey]={rich_text:[{text:{content:entry.mood}}]};
+    }
+    
+    // 2. 기존 항목 조회 (날짜 기준 중복 방지)
+    let existingId=null;
+    if(dateKey){
+      const qRes=await fetch(`${c.proxy}/v1/databases/${c.dbId}/query`,{
+        method:'POST',
+        headers:{'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'},
+        body:JSON.stringify({filter:{property:dateKey,date:{equals:entry.date}},page_size:1})
+      });
+      if(qRes.ok){
+        const qData=await qRes.json();
+        existingId=qData.results?.[0]?.id||null;
+      }
+    }
+    
+    // 3. 생성 or 업데이트
+    let saveRes;
+    if(existingId){
+      saveRes=await fetch(`${c.proxy}/v1/pages/${existingId}`,{
+        method:'PATCH',
+        headers:{'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'},
+        body:JSON.stringify({properties:pageProps})
+      });
+    }else{
+      saveRes=await fetch(`${c.proxy}/v1/pages`,{
+        method:'POST',
+        headers:{'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'},
+        body:JSON.stringify({parent:{database_id:c.dbId},properties:pageProps})
+      });
+    }
+    
+    if(!saveRes.ok){
+      const errData=await saveRes.json().catch(()=>({}));
+      console.error('[Notion] 저장 실패:', saveRes.status, JSON.stringify(errData));
+      // 사용자에게 구체적 오류 표시
+      const msg=errData?.message||`HTTP ${saveRes.status}`;
+      showToast(`노션 저장 실패: ${msg.slice(0,40)}`);
+      return false;
+    }
+    
     return true;
-  }catch(e){console.error('j notion',e);return false}
+    
+  }catch(e){
+    console.error('[Notion] 예외 발생:', e);
+    showToast(`노션 연결 오류: ${e.message?.slice(0,40)||'네트워크 확인'}`);
+    return false;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1310,28 +1393,111 @@ function pRenderPlannerCal(){
 
 // Planner Notion
 function pSyncNotionDebounced(){if(!pNotionConfig)return;clearTimeout(pNotionTimer);pNotionTimer=setTimeout(pSyncNotion,2500)}
+
 async function pSyncNotion(){
   if(!pNotionConfig)return;
-  const key=pDateKey(pCurrentDate);const data=pLoadData();const dayData=data[key]||{};const tasks=[];
-  P_SLOTS.forEach(({h,m})=>{const sk=`${h}-${m}`;const s=dayData[sk];if(s&&s.text&&s.text.trim()){const t=pTimeStr(h,m);tasks.push({time:`${t.ampm} ${t.main}`,text:s.text,done:s.done});}});
+  const proxy=(pNotionConfig.proxy||'').replace(/\/$/,'');
+  if(!proxy){showToast('플래너: 프록시 주소가 없어요');return;}
+
+  const key=pDateKey(pCurrentDate);
+  const data=pLoadData();const dayData=data[key]||{};
+  const tasks=[];
+  P_SLOTS.forEach(({h,m})=>{
+    const sk=`${h}-${m}`;const s=dayData[sk];
+    if(s&&s.text&&s.text.trim()){
+      const t=pTimeStr(h,m);
+      tasks.push({time:`${t.ampm} ${t.main}`,text:s.text,done:!!s.done});
+    }
+  });
   if(!tasks.length)return;
+
   try{
-    const doneCount=tasks.filter(t=>t.done).length;
-    const pageProps={'날짜':{date:{start:key}},'제목':{title:[{text:{content:`${pCurrentDate.getFullYear()}년 ${pCurrentDate.getMonth()+1}월 ${pCurrentDate.getDate()}일`}}]},'달성률':{number:tasks.length?Math.round(doneCount/tasks.length*100):0},'완료/전체':{rich_text:[{text:{content:`${doneCount}/${tasks.length}`}}]}};
     const headers={'Authorization':'Bearer '+pNotionConfig.apiKey,'Notion-Version':'2022-06-28','Content-Type':'application/json'};
-    const searchRes=await fetch(`https://api.notion.com/v1/databases/${pNotionConfig.dbId}/query`,{method:'POST',headers,body:JSON.stringify({filter:{property:'날짜',date:{equals:key}}})});
-    const searchData=await searchRes.json();
-    if(searchData.results&&searchData.results.length>0){await fetch(`https://api.notion.com/v1/pages/${searchData.results[0].id}`,{method:'PATCH',headers,body:JSON.stringify({properties:pageProps})});}
-    else{await fetch('https://api.notion.com/v1/pages',{method:'POST',headers,body:JSON.stringify({parent:{database_id:pNotionConfig.dbId},properties:pageProps})});}
-    showToast('✓ Notion에 저장됨');
-  }catch(e){console.error('planner notion',e)}
+
+    // 1. DB 스키마 조회 → 속성명 자동 감지
+    const dbRes=await fetch(`${proxy}/v1/databases/${pNotionConfig.dbId}`,{headers});
+    if(!dbRes.ok){
+      const e=await dbRes.json().catch(()=>({}));
+      showToast(`플래너 노션 오류: ${e.message||dbRes.status}`);
+      return;
+    }
+    const dbData=await dbRes.json();
+    const props=dbData.properties||{};
+    const find=(candidates)=>candidates.find(c=>props[c])||null;
+
+    const titleKey = Object.keys(props).find(k=>props[k].type==='title')||'이름';
+    const dateKey  = find(['날짜','Date','date','일자']);
+    const rateKey  = find(['달성률','달성율','Rate','rate','Progress','progress']);
+    const summKey  = find(['완료/전체','완료','Summary','summary','결과']);
+    const taskKey  = find(['할일목록','할 일 목록','Tasks','tasks','내용','Content']);
+
+    const doneCount=tasks.filter(t=>t.done).length;
+    const dateLabel=`${pCurrentDate.getFullYear()}년 ${pCurrentDate.getMonth()+1}월 ${pCurrentDate.getDate()}일`;
+    const taskText=tasks.map(t=>`${t.done?'✓':'○'} ${t.time} ${t.text}`).join('\n');
+
+    const pageProps={};
+    pageProps[titleKey]={title:[{text:{content:dateLabel}}]};
+    if(dateKey) pageProps[dateKey]={date:{start:key}};
+    if(rateKey && props[rateKey]?.type==='number') pageProps[rateKey]={number:tasks.length?Math.round(doneCount/tasks.length*100):0};
+    if(summKey) pageProps[summKey]={rich_text:[{text:{content:`${doneCount}/${tasks.length}`}}]};
+    if(taskKey) pageProps[taskKey]={rich_text:[{text:{content:taskText.slice(0,2000)}}]};
+
+    // 2. 기존 페이지 검색 (날짜 속성 있을 때)
+    let existingId=null;
+    if(dateKey){
+      const qRes=await fetch(`${proxy}/v1/databases/${pNotionConfig.dbId}/query`,{
+        method:'POST',headers,
+        body:JSON.stringify({filter:{property:dateKey,date:{equals:key}},page_size:1})
+      });
+      if(qRes.ok){const qd=await qRes.json();existingId=qd.results?.[0]?.id||null;}
+    }
+
+    // 3. PATCH or POST
+    let saveRes;
+    if(existingId){
+      saveRes=await fetch(`${proxy}/v1/pages/${existingId}`,{method:'PATCH',headers,body:JSON.stringify({properties:pageProps})});
+    }else{
+      saveRes=await fetch(`${proxy}/v1/pages`,{method:'POST',headers,body:JSON.stringify({parent:{database_id:pNotionConfig.dbId},properties:pageProps})});
+    }
+
+    if(!saveRes.ok){
+      const e=await saveRes.json().catch(()=>({}));
+      console.error('[Planner Notion] 저장 실패:', saveRes.status, e);
+      showToast(`플래너 저장 실패: ${(e.message||'').slice(0,40)||saveRes.status}`);
+      return;
+    }
+    showToast('✓ 플래너 → Notion 저장됨');
+  }catch(e){
+    console.error('[Planner Notion] 예외:', e);
+    showToast(`플래너 연결 오류: ${e.message?.slice(0,30)||'네트워크 확인'}`);
+  }
 }
-document.getElementById('p-notionSaveBtn').addEventListener('click',()=>{
-  const k=document.getElementById('p-notionKey').value.trim();const d=document.getElementById('p-notionDbId').value.trim();
-  if(!k||!d){document.getElementById('p-notionStatus').textContent='⚠️ 모두 입력해주세요';return}
-  pNotionConfig={apiKey:k,dbId:d};pSaveNotion(pNotionConfig);
-  document.getElementById('p-notionStatus').textContent='✓ 연결되었습니다!';showToast('✓ Notion 연동 완료');
-  setTimeout(()=>document.getElementById('p-notionPanel').classList.remove('visible'),1200);
+
+document.getElementById('p-notionSaveBtn').addEventListener('click', async ()=>{
+  const k=document.getElementById('p-notionKey').value.trim();
+  const d=document.getElementById('p-notionDbId').value.trim();
+  const pr=document.getElementById('p-notionProxy')?.value.trim().replace(/\/$/,'')||'';
+  const statusEl=document.getElementById('p-notionStatus');
+  if(!k||!d){statusEl.textContent='⚠️ 토큰과 DB ID를 입력해주세요';return}
+  if(!pr){statusEl.textContent='⚠️ 프록시 주소를 입력해주세요';return}
+  statusEl.textContent='연결 확인 중…';
+  try{
+    const res=await fetch(`${pr}/v1/databases/${d}`,{headers:{'Authorization':`Bearer ${k}`,'Notion-Version':'2022-06-28'}});
+    const data=await res.json();
+    if(res.ok){
+      pNotionConfig={apiKey:k,dbId:d,proxy:pr};
+      pSaveNotion(pNotionConfig);
+      const dbTitle=data.title?.[0]?.plain_text||'DB';
+      const propNames=Object.keys(data.properties||{}).join(', ');
+      statusEl.innerHTML=`✅ 연결됨: <b>${dbTitle}</b><br><span style="font-size:10px;color:var(--text3)">${propNames}</span>`;
+      showToast('✓ 플래너 Notion 연동 완료');
+      setTimeout(()=>document.getElementById('p-notionPanel').classList.remove('visible'),2500);
+    }else{
+      statusEl.textContent=`❌ 실패: ${data.message||res.status}`;
+    }
+  }catch(e){
+    statusEl.textContent=`❌ 연결 오류: ${e.message?.slice(0,40)||'네트워크 확인'}`;
+  }
 });
 
 // ════════════════════════════════════════════════════════════════
@@ -1365,9 +1531,18 @@ async function init(){
   // Planner
   pNotionConfig=pLoadNotion();
   if(pNotionConfig){
-    document.getElementById('p-notionPanelTitle').innerHTML='<span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span> Notion 연동됨</span>';
-    document.getElementById('p-notionFormArea').innerHTML=`<div style="font-size:13px;color:var(--text2);margin-bottom:6px">API 키: ••••••${pNotionConfig.apiKey.slice(-6)}</div><div style="font-size:12px;color:var(--text3);margin-bottom:12px">DB: ${pNotionConfig.dbId.slice(0,8)}...</div><button class="notion-save-btn" style="background:var(--surface2);color:var(--text2)" id="p-disconnectBtn">연동 해제</button>`;
-    document.getElementById('p-disconnectBtn')?.addEventListener('click',()=>{pNotionConfig=null;localStorage.removeItem(P_NOTION_KEY);document.getElementById('p-notionPanel').classList.remove('visible');showToast('Notion 연동 해제');});
+    const proxyShort=pNotionConfig.proxy?(new URL(pNotionConfig.proxy).hostname):'없음';
+    document.getElementById('p-notionPanelTitle').innerHTML=`<span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span> Notion 연동됨</span>`;
+    document.getElementById('p-notionFormArea').innerHTML=`
+      <div style="font-size:13px;color:var(--text2);margin-bottom:4px">API 키: ••••••${pNotionConfig.apiKey.slice(-6)}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">DB: ${pNotionConfig.dbId.slice(0,8)}...</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">프록시: ${proxyShort}</div>
+      <button class="notion-save-btn" style="background:var(--surface2);color:var(--text2)" id="p-disconnectBtn">연동 해제</button>`;
+    document.getElementById('p-disconnectBtn')?.addEventListener('click',()=>{
+      pNotionConfig=null;localStorage.removeItem(P_NOTION_KEY);
+      document.getElementById('p-notionPanel').classList.remove('visible');
+      showToast('Notion 연동 해제');
+    });
   }
   pRenderHeader();
   pRenderSlots();
