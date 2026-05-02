@@ -23,8 +23,10 @@
   --meal-snack:#d4a0d4; --meal-late:#e87a8a;
   --weight-color:#a0c4e8;
   --radius:18px; --radius-sm:10px;
-  --safe-top:env(safe-area-inset-top,0px);
-  --safe-bottom:env(safe-area-inset-bottom,0px);
+  /* iPhone 17 Pro: top 62pt, bottom 34pt — fallback for older devices */
+  --safe-top:env(safe-area-inset-top, 62px);
+  --safe-bottom:env(safe-area-inset-bottom, 34px);
+  --nav-h:60px;
 }
 [data-theme="light"] {
   --bg:#f5f0ea; --bg2:#ede8e0; --bg3:#e4ddd4;
@@ -42,7 +44,14 @@
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;overscroll-behavior:none}
 
 /* ── SHELL ── */
-#app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative;overflow:hidden;background:var(--bg)}
+#app{
+  display:flex;flex-direction:column;
+  height:100dvh;max-width:430px;margin:0 auto;
+  position:relative;background:var(--bg);
+  /* reserve space for fixed bottom nav + safe area */
+  padding-bottom:calc(var(--nav-h) + var(--safe-bottom));
+  overflow:hidden;
+}
 
 /* ── TOP BAR ── */
 .topbar{
@@ -73,13 +82,30 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto S
 .page-body::-webkit-scrollbar{display:none}
 
 /* ── SCREENS ── */
-.screen{display:none}
-.screen.active{display:flex;flex-direction:column;height:100%}
+.screen{display:none;flex-direction:column;overflow:hidden}
+.screen.active{display:flex;flex:1;min-height:0;overflow:hidden}
+/* The screens wrapper needs to take remaining height */
+#app > .screen,
+#app > #screen-meal,
+#app > #screen-journal,
+#app > #screen-planner {
+  flex:1;min-height:0;
+}
 
-/* ── BOTTOM NAV ── */
+/* ── BOTTOM NAV — fixed, always visible ── */
 .bottom-nav{
-  display:flex;background:var(--bg2);border-top:1px solid var(--border);
-  padding-bottom:var(--safe-bottom);flex-shrink:0;
+  position:fixed;
+  bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;
+  display:flex;
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  /* solid background extends into safe area */
+  padding-bottom:var(--safe-bottom);
+  z-index:200;
+  /* blur behind nav like native iOS */
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  backdrop-filter:blur(20px) saturate(180%);
 }
 .nav-item{
   flex:1;padding:10px 0 8px;display:flex;flex-direction:column;
@@ -87,7 +113,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto S
   border:none;background:transparent;color:var(--text3);
 }
 .nav-item.active{color:var(--accent)}
-.nav-icon{font-size:20px;line-height:1}
+.nav-icon{font-size:22px;line-height:1}
 .nav-label{font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.3px}
 
 /* ── SECTION HEADERS (sub-tabs) ── */
@@ -297,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto S
 .notion-status{font-size:12px;margin-top:6px;text-align:center;color:var(--green)}
 
 /* ── TOAST ── */
-.toast{position:fixed;bottom:calc(var(--safe-bottom) + 72px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:10px 18px;font-size:13px;color:var(--text);z-index:300;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.toast{position:fixed;bottom:calc(var(--nav-h) + var(--safe-bottom) + 12px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:10px 18px;font-size:13px;color:var(--text);z-index:300;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.4)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ── EMPTY ── */
@@ -518,21 +544,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto S
     </div>
   </div>
 
-  <!-- ════════════════════ BOTTOM NAV ════════════════════ -->
-  <div class="bottom-nav">
-    <button class="nav-item active" id="nav-meal" onclick="switchScreen('meal')">
-      <span class="nav-icon">🍽</span>
-      <span class="nav-label">식사</span>
-    </button>
-    <button class="nav-item" id="nav-journal" onclick="switchScreen('journal')">
-      <span class="nav-icon">📓</span>
-      <span class="nav-label">일기</span>
-    </button>
-    <button class="nav-item" id="nav-planner" onclick="switchScreen('planner')">
-      <span class="nav-icon">📋</span>
-      <span class="nav-label">플래너</span>
-    </button>
-  </div>
+</div><!-- /#app -->
+
+<!-- ════════════════════ BOTTOM NAV (fixed) ════════════════════ -->
+<div class="bottom-nav">
+  <button class="nav-item active" id="nav-meal" onclick="switchScreen('meal')">
+    <span class="nav-icon">🍽</span>
+    <span class="nav-label">식사</span>
+  </button>
+  <button class="nav-item" id="nav-journal" onclick="switchScreen('journal')">
+    <span class="nav-icon">📓</span>
+    <span class="nav-label">일기</span>
+  </button>
+  <button class="nav-item" id="nav-planner" onclick="switchScreen('planner')">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">플래너</span>
+  </button>
 </div>
 
 <!-- ══ MEAL MODALS ══ -->
