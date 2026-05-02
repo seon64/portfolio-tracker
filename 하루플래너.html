@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>하루 플래너</title>
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE8;
+    --text: #1A1814;
+    --text2: #6B6660;
+    --text3: #9E9A96;
+    --accent: #2D5A3D;
+    --accent-light: #E8F0EA;
+    --accent-text: #1A3D27;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --check-bg: #2D5A3D;
+    --done-text: #A8B8AC;
+    --done-bg: #F2F5F2;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --notion-bg: #FFF8E7;
+    --notion-border: #F0C040;
+  }
+  [data-theme="dark"] {
+    --bg: #0F0F0D;
+    --surface: #1C1C18;
+    --surface2: #252520;
+    --text: #F0EDE8;
+    --text2: #A09C96;
+    --text3: #6B6860;
+    --accent: #5A9E6F;
+    --accent-light: #1A2E1F;
+    --accent-text: #A8D4B4;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --check-bg: #5A9E6F;
+    --done-text: #4A5E4E;
+    --done-bg: #1A1E1A;
+    --notion-bg: #2A2510;
+    --notion-border: #8A7030;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    padding-bottom: 120px;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* Header */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border2);
+    padding: 16px 20px 12px;
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .app-title {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .header-actions { display:flex; gap:8px; align-items:center; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 0.5px solid var(--border2);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px; font-weight: 600;
+    color: var(--text2);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .icon-btn:active { transform: scale(0.93); }
+
+  /* Date Nav */
+  .date-nav { display: flex; align-items: center; gap: 8px; }
+  .date-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 0.5px solid var(--border2);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; color: var(--text2);
+    transition: all 0.15s; flex-shrink: 0; user-select: none;
+  }
+  .date-btn:active { transform: scale(0.9); }
+  .date-display { flex: 1; text-align: center; }
+  .date-main {
+    font-size: 15px; font-weight: 600; letter-spacing: -0.3px;
+    cursor: pointer; color: var(--text);
+  }
+  .date-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .today-badge {
+    display: inline-block;
+    background: var(--accent-light); color: var(--accent-text);
+    font-size: 11px; font-weight: 600;
+    padding: 2px 7px; border-radius: 20px; margin-left: 6px;
+  }
+
+  /* Stats */
+  .stats-bar {
+    background: var(--surface);
+    padding: 10px 20px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+  }
+  .stat-item { flex: 1; text-align: center; padding: 4px 0; }
+  .stat-item + .stat-item { border-left: 0.5px solid var(--border); }
+  .stat-num { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+  .stat-label { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .progress-bar-wrap {
+    padding: 0 20px 10px;
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+  }
+  .progress-track {
+    height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--accent); border-radius: 2px;
+    transition: width 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  /* Slots */
+  .slots-container { padding: 0 16px; margin-top: 8px; }
+  .slot {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 2px;
+    transition: background 0.2s, border-color 0.2s;
+    min-height: 52px;
+  }
+  .slot.done { background: var(--done-bg); border-color: transparent; }
+
+  .time-col { flex-shrink: 0; width: 46px; }
+  .time-label {
+    font-size: 13px; font-weight: 600; color: var(--text2); line-height: 1.3;
+  }
+  .time-label.hour-mark { color: var(--text); font-size: 14px; }
+  .time-ampm { font-size: 10px; color: var(--text3); display: block; }
+
+  .check-btn {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid var(--border2);
+    background: transparent; flex-shrink: 0; margin-top: 2px;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: white;
+  }
+  .check-btn.checked { background: var(--check-bg); border-color: var(--check-bg); }
+
+  .task-area { flex: 1; }
+  .task-input {
+    width: 100%; background: transparent; border: none; outline: none;
+    font-size: 14px; color: var(--text); font-family: inherit;
+    resize: none; line-height: 1.6; min-height: 24px;
+    caret-color: var(--accent);
+  }
+  .task-input::placeholder { color: var(--text3); }
+  .task-input.done-text {
+    color: var(--done-text);
+    text-decoration: line-through;
+    text-decoration-color: var(--done-text);
+  }
+
+  .hour-divider {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0 2px;
+  }
+  .hour-label-big {
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    letter-spacing: 0.5px; text-transform: uppercase; flex-shrink: 0;
+  }
+  .hour-line { flex: 1; height: 0.5px; background: var(--border2); }
+
+  /* Notion Panel */
+  .notion-panel {
+    margin: 12px 16px;
+    background: var(--notion-bg);
+    border: 0.5px solid var(--notion-border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: none;
+  }
+  .notion-panel.visible { display: block; }
+  .notion-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .notion-field { margin-bottom: 8px; }
+  .notion-field label { font-size: 11px; color: var(--text2); display: block; margin-bottom: 3px; }
+  .notion-field input {
+    width: 100%; padding: 8px 10px;
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text);
+    font-family: monospace; outline: none;
+    transition: border-color 0.15s;
+  }
+  .notion-field input:focus { border-color: var(--accent); }
+  .notion-save-btn {
+    width: 100%; padding: 10px;
+    background: var(--accent); color: white;
+    border: none; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    margin-top: 4px; font-family: inherit; transition: opacity 0.15s;
+  }
+  .notion-save-btn:active { opacity: 0.8; }
+  .notion-status { font-size: 12px; margin-top: 6px; text-align: center; color: var(--accent); }
+  .notion-connected { display: flex; align-items: center; gap: 6px; }
+  .dot-green {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.5);
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.visible { display: flex; }
+  .date-picker-sheet {
+    width: 100%; max-width: 430px;
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 20px;
+    padding-bottom: max(40px, env(safe-area-inset-bottom));
+  }
+  .sheet-handle {
+    width: 40px; height: 4px; background: var(--border2);
+    border-radius: 2px; margin: 0 auto 16px;
+  }
+  .sheet-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; text-align: center; }
+  .cal-nav {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  }
+  .cal-month { font-size: 15px; font-weight: 600; color: var(--text); }
+  .cal-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 0.5px solid var(--border2);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 14px; color: var(--text2);
+    user-select: none;
+  }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7,1fr);
+    gap: 2px; text-align: center;
+  }
+  .cal-day-name { font-size: 11px; color: var(--text3); padding: 4px 0; font-weight: 500; }
+  .cal-day {
+    aspect-ratio: 1; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; cursor: pointer; transition: all 0.15s;
+    color: var(--text); user-select: none;
+  }
+  .cal-day:hover { background: var(--surface2); }
+  .cal-day.selected { background: var(--accent); color: white; font-weight: 600; }
+  .cal-day.today { font-weight: 700; color: var(--accent); }
+  .cal-day.today.selected { color: white; }
+  .cal-day.other-month { color: var(--text3); opacity: 0.5; }
+  .cal-day.has-data { position: relative; }
+  .cal-day.has-data::after {
+    content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+  }
+  .cal-day.selected::after { background: rgba(255,255,255,0.7); }
+
+  /* Sync FAB */
+  .sync-btn {
+    position: fixed; bottom: max(24px, env(safe-area-inset-bottom)); right: 20px;
+    width: 52px; height: 52px;
+    background: var(--accent); border-radius: 50%; border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    font-size: 20px; transition: all 0.2s; z-index: 99; color: white;
+  }
+  .sync-btn:active { transform: scale(0.9); }
+
+  .section-label {
+    padding: 8px 16px 2px;
+    font-size: 12px; color: var(--text3);
+  }
+  .today-indicator {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    background: var(--accent-light);
+    border-radius: 20px;
+    margin: 10px 16px 4px;
+    width: fit-content;
+  }
+  .today-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(1.3); }
+  }
+  .today-text { font-size: 12px; font-weight: 600; color: var(--accent-text); }
+
+  .toast {
+    position: fixed; bottom: max(90px, calc(env(safe-area-inset-bottom) + 70px));
+    left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg);
+    padding: 8px 18px; border-radius: 20px;
+    font-size: 13px; font-weight: 500;
+    opacity: 0; transition: opacity 0.3s;
+    z-index: 300; white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Notion help */
+  .notion-help {
+    font-size: 11px; color: var(--text3); margin-top: 8px; line-height: 1.6;
+  }
+  .notion-help a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span class="app-title">📋 하루 플래너</span>
+    <div class="header-actions">
+      <div class="icon-btn" id="notionBtn" title="Notion 연동">N</div>
+      <div class="icon-btn" id="themeBtn">🌙</div>
+    </div>
+  </div>
+  <div class="date-nav">
+    <div class="date-btn" id="prevDay">‹</div>
+    <div class="date-display">
+      <div class="date-main" id="dateMain">로딩중...</div>
+    </div>
+    <div class="date-btn" id="nextDay">›</div>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num" id="statTotal">0</div>
+    <div class="stat-label">입력됨</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" id="statDone">0</div>
+    <div class="stat-label">완료</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" id="statRate">0%</div>
+    <div class="stat-label">달성률</div>
+  </div>
+</div>
+<div class="progress-bar-wrap">
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- Notion Panel -->
+<div class="notion-panel" id="notionPanel">
+  <div class="notion-title" id="notionPanelTitle">🔗 Notion DB 연동</div>
+  <div id="notionFormArea">
+    <div class="notion-field">
+      <label>Notion Integration Token</label>
+      <input type="password" id="notionKey" placeholder="secret_xxxxxxxxxxxxxxxxxxxx">
+    </div>
+    <div class="notion-field">
+      <label>데이터베이스 ID</label>
+      <input type="text" id="notionDbId" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+    </div>
+    <button class="notion-save-btn" id="notionSaveBtn">저장 및 연결</button>
+    <div class="notion-status" id="notionStatus"></div>
+    <div class="notion-help">
+      💡 Notion DB에 아래 속성을 만들어주세요:<br>
+      <strong>날짜</strong> (Date) · <strong>제목</strong> (Title) · <strong>달성률</strong> (Number) · <strong>완료/전체</strong> (Text)
+    </div>
+  </div>
+</div>
+
+<div id="sectionLabel"></div>
+<div class="slots-container" id="slotsContainer"></div>
+
+<button class="sync-btn" id="syncBtn" title="Notion 동기화">↑</button>
+
+<!-- Date Picker -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="date-picker-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">날짜 선택</div>
+    <div class="cal-nav">
+      <div class="cal-btn" id="calPrev">‹</div>
+      <div class="cal-month" id="calMonthLabel"></div>
+      <div class="cal-btn" id="calNext">›</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'hourly_planner_v3';
+const NOTION_KEY = 'notion_config_v1';
+
+let currentDate = new Date();
+currentDate.setHours(0,0,0,0);
+let isDark = false;
+let notionConfig = null;
+let calViewDate = new Date();
+let notionTimer = null;
+
+// 5:00 ~ 23:30, 30분 단위
+const SLOTS = [];
+for(let h = 5; h <= 23; h++){
+  for(let m = 0; m < 60; m += 30){
+    if(h === 23 && m === 30) break;
+    SLOTS.push({h, m});
+  }
+}
+
+function loadData(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function saveData(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function loadNotion(){
+  try { return JSON.parse(localStorage.getItem(NOTION_KEY) || 'null'); }
+  catch(e){ return null; }
+}
+function saveNotion(cfg){ localStorage.setItem(NOTION_KEY, JSON.stringify(cfg)); }
+
+function dateKey(d){ return d.toISOString().split('T')[0]; }
+
+function isToday(d){
+  const t = new Date(); t.setHours(0,0,0,0);
+  return d.getTime() === t.getTime();
+}
+
+function formatDate(d){
+  const days = ['일','월','화','수','목','금','토'];
+  return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
+
+function timeStr(h, m){
+  const ampm = h < 12 ? '오전' : h === 12 ? '낮' : '오후';
+  const hh = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return { main: `${hh}:${m === 0 ? '00' : '30'}`, ampm };
+}
+
+function renderHeader(){
+  const key = dateKey(currentDate);
+  let dateHtml = formatDate(currentDate);
+  if(isToday(currentDate)) dateHtml += '<span class="today-badge">오늘</span>';
+  document.getElementById('dateMain').innerHTML = dateHtml;
+
+  const data = loadData();
+  const dayData = data[key] || {};
+  let filled = 0, done = 0;
+  SLOTS.forEach(s => {
+    const sk = `${s.h}-${s.m}`;
+    const slot = dayData[sk];
+    if(slot && slot.text && slot.text.trim()){ filled++; if(slot.done) done++; }
+  });
+  document.getElementById('statTotal').textContent = filled;
+  document.getElementById('statDone').textContent = done;
+  const rate = filled > 0 ? Math.round(done / filled * 100) : 0;
+  document.getElementById('statRate').textContent = rate + '%';
+  document.getElementById('progressFill').style.width = rate + '%';
+
+  const lbl = document.getElementById('sectionLabel');
+  const today = new Date(); today.setHours(0,0,0,0);
+  if(isToday(currentDate)){
+    lbl.innerHTML = '<div class="today-indicator"><div class="today-dot"></div><span class="today-text">오늘 일정</span></div>';
+  } else if(currentDate < today){
+    lbl.innerHTML = '<div class="section-label">📁 과거 기록</div>';
+  } else {
+    lbl.innerHTML = '<div class="section-label">📅 미래 일정</div>';
+  }
+}
+
+function getPlaceholder(h, m){
+  if(h >= 5 && h < 7) return '🌅 기상 루틴';
+  if(h >= 7 && h < 9) return '☕ 아침 준비';
+  if(h >= 9 && h < 12) return '💼 오전 작업';
+  if(h >= 12 && h < 13) return '🍱 점심 시간';
+  if(h >= 13 && h < 14) return '😌 점심 후 휴식';
+  if(h >= 14 && h < 18) return '💼 오후 작업';
+  if(h >= 18 && h < 19) return '🌆 저녁 식사';
+  if(h >= 19 && h < 22) return '📚 자기 계발';
+  if(h >= 22) return '🌙 취침 준비';
+  return '할 일 입력...';
+}
+
+function renderSlots(){
+  const key = dateKey(currentDate);
+  const data = loadData();
+  const dayData = data[key] || {};
+  const container = document.getElementById('slotsContainer');
+  container.innerHTML = '';
+
+  let lastH = -1;
+  SLOTS.forEach(({h, m}) => {
+    if(h !== lastH){
+      const div = document.createElement('div');
+      div.className = 'hour-divider';
+      const t = timeStr(h, 0);
+      div.innerHTML = `<span class="hour-label-big">${t.ampm} ${t.main.split(':')[0]}시</span><div class="hour-line"></div>`;
+      container.appendChild(div);
+      lastH = h;
+    }
+    const sk = `${h}-${m}`;
+    const slotData = dayData[sk] || {text:'', done:false};
+    const el = document.createElement('div');
+    el.className = 'slot' + (slotData.done ? ' done' : '');
+    el.dataset.key = sk;
+
+    const t = timeStr(h, m);
+    el.innerHTML = `
+      <div class="time-col">
+        <div class="time-label ${m === 0 ? 'hour-mark' : ''}">${t.main}<span class="time-ampm">${t.ampm}</span></div>
+      </div>
+      <button class="check-btn ${slotData.done ? 'checked' : ''}" data-sk="${sk}">
+        ${slotData.done ? '✓' : ''}
+      </button>
+      <div class="task-area">
+        <textarea class="task-input ${slotData.done ? 'done-text' : ''}"
+          data-sk="${sk}"
+          placeholder="${getPlaceholder(h,m)}"
+          rows="1"
+        >${slotData.text || ''}</textarea>
+      </div>`;
+    container.appendChild(el);
+
+    const ta = el.querySelector('textarea');
+    autoResize(ta);
+    ta.addEventListener('input', () => { autoResize(ta); onTaskInput(sk, ta.value); });
+    ta.addEventListener('keydown', e => {
+      if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); focusNext(sk); }
+    });
+    el.querySelector('.check-btn').addEventListener('click', () => toggleDone(sk));
+  });
+}
+
+function autoResize(ta){
+  ta.style.height = 'auto';
+  ta.style.height = Math.max(24, ta.scrollHeight) + 'px';
+}
+
+function onTaskInput(sk, value){
+  const key = dateKey(currentDate);
+  const data = loadData();
+  if(!data[key]) data[key] = {};
+  if(!data[key][sk]) data[key][sk] = {text:'', done:false};
+  data[key][sk].text = value;
+  saveData(data);
+  renderHeader();
+  syncNotionDebounced();
+}
+
+function toggleDone(sk){
+  const key = dateKey(currentDate);
+  const data = loadData();
+  if(!data[key]) data[key] = {};
+  if(!data[key][sk]) data[key][sk] = {text:'', done:false};
+  const cur = data[key][sk];
+  if(!cur.text.trim()){ showToast('먼저 할 일을 입력해주세요'); return; }
+  cur.done = !cur.done;
+  saveData(data);
+
+  const slot = document.querySelector(`.slot[data-key="${sk}"]`);
+  const btn = slot.querySelector('.check-btn');
+  const ta = slot.querySelector('textarea');
+  if(cur.done){
+    slot.classList.add('done'); btn.classList.add('checked'); btn.textContent = '✓'; ta.classList.add('done-text');
+  } else {
+    slot.classList.remove('done'); btn.classList.remove('checked'); btn.textContent = ''; ta.classList.remove('done-text');
+  }
+  renderHeader();
+  syncNotionDebounced();
+}
+
+function focusNext(sk){
+  const [h,m] = sk.split('-').map(Number);
+  let nh = h, nm = m + 30;
+  if(nm >= 60){ nm = 0; nh++; }
+  const next = document.querySelector(`textarea[data-sk="${nh}-${nm}"]`);
+  if(next) next.focus();
+}
+
+// Theme
+function setTheme(dark){
+  isDark = dark;
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : '');
+  document.getElementById('themeBtn').textContent = dark ? '☀️' : '🌙';
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+}
+
+// Notion sync
+function syncNotionDebounced(){
+  if(!notionConfig) return;
+  clearTimeout(notionTimer);
+  notionTimer = setTimeout(syncNotion, 2500);
+}
+
+async function syncNotion(){
+  if(!notionConfig) return;
+  const key = dateKey(currentDate);
+  const data = loadData();
+  const dayData = data[key] || {};
+  const tasks = [];
+  SLOTS.forEach(({h,m}) => {
+    const sk = `${h}-${m}`;
+    const s = dayData[sk];
+    if(s && s.text && s.text.trim()){
+      const t = timeStr(h,m);
+      tasks.push({time:`${t.ampm} ${t.main}`, text:s.text, done:s.done});
+    }
+  });
+  if(!tasks.length) return;
+
+  try {
+    const doneCount = tasks.filter(t => t.done).length;
+    const pageProps = {
+      '날짜': { date: { start: key }},
+      '제목': { title: [{ text: { content: formatDate(currentDate) }}]},
+      '달성률': { number: tasks.length > 0 ? Math.round(doneCount / tasks.length * 100) : 0 },
+      '완료/전체': { rich_text: [{ text: { content: `${doneCount}/${tasks.length}` }}]}
+    };
+    const headers = {
+      'Authorization': 'Bearer ' + notionConfig.apiKey,
+      'Notion-Version': '2022-06-28',
+      'Content-Type': 'application/json'
+    };
+
+    const searchRes = await fetch(`https://api.notion.com/v1/databases/${notionConfig.dbId}/query`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ filter: { property:'날짜', date:{ equals: key }}})
+    });
+    const searchData = await searchRes.json();
+
+    if(searchData.results && searchData.results.length > 0){
+      const pageId = searchData.results[0].id;
+      await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+        method: 'PATCH', headers, body: JSON.stringify({ properties: pageProps })
+      });
+    } else {
+      await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST', headers,
+        body: JSON.stringify({ parent: { database_id: notionConfig.dbId }, properties: pageProps })
+      });
+    }
+    showToast('✓ Notion에 저장됨');
+  } catch(e){
+    console.error('Notion sync error', e);
+  }
+}
+
+// Calendar
+function renderCalendar(){
+  const y = calViewDate.getFullYear(), mo = calViewDate.getMonth();
+  document.getElementById('calMonthLabel').textContent = `${y}년 ${mo+1}월`;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  ['일','월','화','수','목','금','토'].forEach(d => {
+    const span = document.createElement('div');
+    span.className = 'cal-day-name'; span.textContent = d;
+    grid.appendChild(span);
+  });
+  const first = new Date(y, mo, 1);
+  const startDay = first.getDay();
+  const data = loadData();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysInMonth = new Date(y, mo+1, 0).getDate();
+
+  for(let i = 0; i < startDay; i++){
+    const d2 = new Date(y, mo, 1 - startDay + i);
+    const span = document.createElement('div');
+    span.className = 'cal-day other-month';
+    span.textContent = d2.getDate();
+    grid.appendChild(span);
+  }
+  for(let d = 1; d <= daysInMonth; d++){
+    const dt = new Date(y, mo, d);
+    const dk = dateKey(dt);
+    const span = document.createElement('div');
+    let cls = 'cal-day';
+    if(dt.getTime() === today.getTime()) cls += ' today';
+    if(dt.getTime() === currentDate.getTime()) cls += ' selected';
+    if(data[dk] && Object.values(data[dk]).some(s => s.text && s.text.trim())) cls += ' has-data';
+    span.className = cls; span.textContent = d;
+    span.addEventListener('click', () => {
+      currentDate = dt;
+      document.getElementById('modalOverlay').classList.remove('visible');
+      renderHeader(); renderSlots();
+    });
+    grid.appendChild(span);
+  }
+}
+
+// Notion panel
+function updateNotionPanel(){
+  const formArea = document.getElementById('notionFormArea');
+  const title = document.getElementById('notionPanelTitle');
+  if(notionConfig){
+    title.innerHTML = '<span class="notion-connected"><span class="dot-green"></span> Notion 연동됨</span>';
+    formArea.innerHTML = `
+      <div style="font-size:13px;color:var(--text2);margin-bottom:6px">
+        API 키: ••••••${notionConfig.apiKey.slice(-6)}
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">
+        DB: ${notionConfig.dbId.slice(0,8)}...
+      </div>
+      <button class="notion-save-btn" style="background:var(--surface2);color:var(--text2)" id="notionDisconnectBtn">연동 해제</button>
+    `;
+    document.getElementById('notionDisconnectBtn').addEventListener('click', () => {
+      notionConfig = null;
+      localStorage.removeItem(NOTION_KEY);
+      document.getElementById('notionPanel').classList.remove('visible');
+      showToast('Notion 연동이 해제되었습니다');
+    });
+  }
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Init
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('theme');
+  if(saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)){
+    setTheme(true);
+  }
+  notionConfig = loadNotion();
+  if(notionConfig) updateNotionPanel();
+
+  renderHeader();
+  renderSlots();
+
+  document.getElementById('themeBtn').addEventListener('click', () => setTheme(!isDark));
+
+  document.getElementById('prevDay').addEventListener('click', () => {
+    currentDate = new Date(currentDate); currentDate.setDate(currentDate.getDate() - 1);
+    renderHeader(); renderSlots();
+  });
+  document.getElementById('nextDay').addEventListener('click', () => {
+    currentDate = new Date(currentDate); currentDate.setDate(currentDate.getDate() + 1);
+    renderHeader(); renderSlots();
+  });
+  document.getElementById('dateMain').addEventListener('click', () => {
+    calViewDate = new Date(currentDate);
+    renderCalendar();
+    document.getElementById('modalOverlay').classList.add('visible');
+  });
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if(e.target === e.currentTarget) e.currentTarget.classList.remove('visible');
+  });
+  document.getElementById('calPrev').addEventListener('click', () => {
+    calViewDate.setMonth(calViewDate.getMonth() - 1); renderCalendar();
+  });
+  document.getElementById('calNext').addEventListener('click', () => {
+    calViewDate.setMonth(calViewDate.getMonth() + 1); renderCalendar();
+  });
+
+  document.getElementById('notionBtn').addEventListener('click', () => {
+    document.getElementById('notionPanel').classList.toggle('visible');
+  });
+
+  document.getElementById('notionSaveBtn').addEventListener('click', () => {
+    const k = document.getElementById('notionKey').value.trim();
+    const d = document.getElementById('notionDbId').value.trim();
+    if(!k || !d){ document.getElementById('notionStatus').textContent = '⚠️ 모두 입력해주세요'; return; }
+    notionConfig = {apiKey: k, dbId: d};
+    saveNotion(notionConfig);
+    updateNotionPanel();
+    document.getElementById('notionStatus').textContent = '✓ 연결되었습니다!';
+    showToast('✓ Notion 연동 완료');
+    setTimeout(() => document.getElementById('notionPanel').classList.remove('visible'), 1200);
+  });
+
+  document.getElementById('syncBtn').addEventListener('click', () => {
+    if(!notionConfig){
+      document.getElementById('notionPanel').classList.add('visible');
+      showToast('Notion 설정을 먼저 해주세요');
+      return;
+    }
+    syncNotion();
+    showToast('🔄 동기화 중...');
+  });
+});
+</script>
+</body>
+</html>
