@@ -408,6 +408,26 @@ input, textarea { -webkit-user-select:text; user-select:text; }
 .no-entry { text-align:center; padding:32px 20px; color:var(--text3); font-size:14px; font-weight:300; line-height:1.7; }
 .no-entry-icon { font-size:28px; margin-bottom:10px; opacity:.5; }
 
+/* ═══ SYNC BANNER ═══ */
+.sync-banner {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px; background:var(--green-light);
+  border-bottom:1px solid rgba(90,158,111,0.25); flex-shrink:0;
+}
+.sync-banner-text { font-size:12px; color:var(--green); font-weight:500; }
+.sync-banner-time { font-size:10px; color:var(--green); font-family:'DM Mono'; opacity:.7; }
+.sync-pull-btn {
+  padding:6px 14px; border-radius:20px;
+  border:1px solid var(--green); background:transparent;
+  color:var(--green); font-size:12px; font-weight:600;
+  cursor:pointer; font-family:'Noto Sans KR'; transition:all .15s;
+  display:flex; align-items:center; gap:5px; white-space:nowrap;
+}
+.sync-pull-btn:active { background:var(--green-light); }
+.sync-pull-btn.loading { opacity:.6; pointer-events:none; }
+@keyframes rotate { to { transform:rotate(360deg); } }
+.spin { display:inline-block; animation:rotate .8s linear infinite; }
+
 </style>
 </head>
 <body>
@@ -424,6 +444,10 @@ input, textarea { -webkit-user-select:text; user-select:text; }
 
   <!-- ══ 식사 스크린 ══ -->
   <div class="screen" id="screen-meal">
+    <div class="sync-banner" id="meal-sync-banner" style="display:none">
+      <div><div class="sync-banner-text">☁️ 노션 동기화</div><div class="sync-banner-time" id="meal-last-sync">마지막 동기화: -</div></div>
+      <button class="sync-pull-btn" id="meal-pull-btn" onclick="mealPullFromNotion()">↓ 불러오기</button>
+    </div>
     <div class="sub-tabbar">
       <button class="sub-tab active" data-screen="meal" data-sub="calendar" onclick="switchSubTab(this,'meal')">달력</button>
       <button class="sub-tab"        data-screen="meal" data-sub="stats"    onclick="switchSubTab(this,'meal')">통계</button>
@@ -478,6 +502,10 @@ input, textarea { -webkit-user-select:text; user-select:text; }
 
   <!-- ══ 일기 스크린 ══ -->
   <div class="screen" id="screen-journal">
+    <div class="sync-banner" id="j-sync-banner" style="display:none">
+      <div><div class="sync-banner-text">☁️ 노션 동기화</div><div class="sync-banner-time" id="j-last-sync">마지막 동기화: -</div></div>
+      <button class="sync-pull-btn" id="j-pull-btn" onclick="jPullFromNotion()">↓ 불러오기</button>
+    </div>
     <div class="sub-tabbar">
       <button class="sub-tab active" data-screen="journal" data-sub="today"    onclick="switchSubTab(this,'journal')">오늘</button>
       <button class="sub-tab"        data-screen="journal" data-sub="calendar" onclick="switchSubTab(this,'journal')">달력</button>
@@ -534,6 +562,10 @@ input, textarea { -webkit-user-select:text; user-select:text; }
 
   <!-- ══ 플래너(투두) 스크린 ══ -->
   <div class="screen" id="screen-planner">
+    <div class="sync-banner" id="p-sync-banner" style="display:none">
+      <div><div class="sync-banner-text">☁️ 노션 동기화</div><div class="sync-banner-time" id="p-last-sync">마지막 동기화: -</div></div>
+      <button class="sync-pull-btn" id="p-pull-btn" onclick="pPullFromNotion()">↓ 불러오기</button>
+    </div>
     <!-- 날짜 네비 -->
     <div class="todo-toolbar">
       <div class="todo-date-nav">
@@ -1076,22 +1108,259 @@ async function init(){
   document.getElementById('topbar-sub').textContent=`${now.getMonth()+1}월 ${now.getDate()}일 (${DAYS_KR[now.getDay()]})`;
   // 식사
   mealLoadState();mealRenderCalendar();
+  mealUpdateSyncBanner();
   // 일기
   await jInitDB();jAllEntries=await jGetAllEntries();await jLoadToday();jRenderTodayDate();
   document.getElementById('j-inputToken').value=localStorage.getItem('notion_token')||'';
   document.getElementById('j-inputDbId').value=localStorage.getItem('notion_db_id')||'';
   document.getElementById('j-inputProxy').value=localStorage.getItem('notion_proxy')||'';
+  jUpdateSyncBanner();
   // 플래너
   pNotionConfig=pLoadNotion();
+  pUpdateSyncBanner();
   if(pNotionConfig){
     let ph='';try{ph=new URL(pNotionConfig.proxy).hostname;}catch(e){ph=pNotionConfig.proxy||'';}
     document.getElementById('p-notionTitle').innerHTML=`<span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span> Notion 연동됨</span>`;
     document.getElementById('p-notionForm').innerHTML=`<div style="font-size:13px;color:var(--text2);margin-bottom:4px">API 키: ••••••${pNotionConfig.apiKey.slice(-6)}</div><div style="font-size:12px;color:var(--text3);margin-bottom:4px">DB: ${pNotionConfig.dbId.slice(0,8)}...</div><div style="font-size:12px;color:var(--text3);margin-bottom:12px">프록시: ${ph}</div><button class="notion-save-btn" style="background:var(--surface2);color:var(--text2)" id="p-disconnectBtn">연동 해제</button>`;
-    document.getElementById('p-disconnectBtn')?.addEventListener('click',()=>{pNotionConfig=null;localStorage.removeItem(P_NOTION_KEY);document.getElementById('p-notionPanel').classList.remove('visible');showToast('Notion 연동 해제');});
+    document.getElementById('p-disconnectBtn')?.addEventListener('click',()=>{pNotionConfig=null;localStorage.removeItem(P_NOTION_KEY);document.getElementById('p-notionPanel').classList.remove('visible');pUpdateSyncBanner();showToast('Notion 연동 해제');});
   }
   pRenderAll();
   switchScreen('meal');
+  // 앱 시작 시 노션 연동된 탭 자동 동기화
+  autoSyncAll();
 }
+
+// 앱 열 때 자동으로 한 번 불러오기
+async function autoSyncAll(){
+  const lastAuto=localStorage.getItem('last-auto-sync');
+  const now=Date.now();
+  // 마지막 자동 동기화로부터 5분 이상 지났을 때만
+  if(lastAuto && now-parseInt(lastAuto) < 5*60*1000) return;
+  localStorage.setItem('last-auto-sync', now+'');
+  if(mealState.notionToken && mealState.notionDbId && mealState.notionProxy) await mealPullFromNotion(true);
+  if(jIsConfigured()) await jPullFromNotion(true);
+  if(pNotionConfig) await pPullFromNotion(true);
+}
+
+// ════════════════════════════════════════
+// SYNC BANNERS
+// ════════════════════════════════════════
+function fmtSyncTime(ts){ if(!ts)return'동기화 안 됨'; const d=new Date(parseInt(ts)); return`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
+
+function mealUpdateSyncBanner(){
+  const has=mealState.notionToken&&mealState.notionDbId&&mealState.notionProxy;
+  const banner=document.getElementById('meal-sync-banner');
+  if(banner)banner.style.display=has?'flex':'none';
+  const el=document.getElementById('meal-last-sync');
+  if(el)el.textContent='마지막 동기화: '+fmtSyncTime(localStorage.getItem('meal-last-pull'));
+}
+function jUpdateSyncBanner(){
+  const has=jIsConfigured();
+  const banner=document.getElementById('j-sync-banner');
+  if(banner)banner.style.display=has?'flex':'none';
+  const el=document.getElementById('j-last-sync');
+  if(el)el.textContent='마지막 동기화: '+fmtSyncTime(localStorage.getItem('j-last-pull'));
+}
+function pUpdateSyncBanner(){
+  const banner=document.getElementById('p-sync-banner');
+  if(banner)banner.style.display=pNotionConfig?'flex':'none';
+  const el=document.getElementById('p-last-sync');
+  if(el)el.textContent='마지막 동기화: '+fmtSyncTime(localStorage.getItem('p-last-pull'));
+}
+
+// ════════════════════════════════════════
+// MEAL PULL FROM NOTION
+// ════════════════════════════════════════
+async function mealPullFromNotion(silent=false){
+  const proxy=(mealState.notionProxy||'').replace(/\/$/,'');
+  const token=mealState.notionToken, dbId=mealState.notionDbId;
+  if(!token||!dbId||!proxy){ if(!silent)showToast('노션 설정을 먼저 해주세요'); return; }
+  const btn=document.getElementById('meal-pull-btn');
+  if(btn){btn.innerHTML='<span class="spin">↻</span> 불러오는 중…';btn.classList.add('loading');}
+  try{
+    const headers={'Authorization':`Bearer ${token}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'};
+    // DB 스키마 조회
+    const dbRes=await fetch(`${proxy}/v1/databases/${dbId}`,{headers});
+    if(!dbRes.ok)throw new Error('DB 조회 실패');
+    const props=(await dbRes.json()).properties||{};
+    const fp=cs=>cs.find(c=>props[c])||null;
+    const dk=fp(['날짜','Date','date','일자']);
+    // 전체 페이지 목록 조회 (최근 100개)
+    let allResults=[],cursor=undefined;
+    do{
+      const body={page_size:100,sorts:[{property:dk||'날짜',direction:'descending'}]};
+      if(cursor)body.start_cursor=cursor;
+      const qRes=await fetch(`${proxy}/v1/databases/${dbId}/query`,{method:'POST',headers,body:JSON.stringify(body)});
+      if(!qRes.ok)break;
+      const qData=await qRes.json();
+      allResults=[...allResults,...(qData.results||[])];
+      cursor=qData.has_more?qData.next_cursor:undefined;
+    }while(cursor && allResults.length<300);
+    // 파싱해서 로컬에 저장
+    let imported=0;
+    for(const page of allResults){
+      const p=page.properties||{};
+      // 날짜 추출
+      const dateVal=dk&&p[dk]?.date?.start;
+      if(!dateVal)continue;
+      const dateStr=dateVal.slice(0,10);
+      // 메모/노트 추출 (식사 내용)
+      const noteKey=Object.keys(p).find(k=>p[k].type==='rich_text'&&k!=='Time'&&(k.includes('Note')||k.includes('메모')||k.includes('내용')));
+      const mealTypeKey=Object.keys(p).find(k=>p[k].type==='select'&&(k.includes('Meal')||k.includes('식사')||k.includes('Type')));
+      const timeKey=Object.keys(p).find(k=>p[k].type==='rich_text'&&(k.includes('Time')||k.includes('시간')));
+      const noteText=noteKey?p[noteKey]?.rich_text?.map(r=>r.plain_text).join('')||'':'';
+      const mealType=mealTypeKey?p[mealTypeKey]?.select?.name||'morning':'morning';
+      const timeText=timeKey?p[timeKey]?.rich_text?.map(r=>r.plain_text).join('')||'':'';
+      // 이미 로컬에 같은 id가 있으면 스킵
+      if(!mealState.entries[dateStr])mealState.entries[dateStr]=[];
+      const exists=mealState.entries[dateStr].some(e=>e.notionId===page.id);
+      if(!exists && noteText){
+        const mealId=MEALS.find(m=>m.label===mealType||m.id===mealType.toLowerCase())?.id||'morning';
+        mealState.entries[dateStr].push({id:page.id,notionId:page.id,meal:mealId,text:noteText,photo:null,time:timeText});
+        imported++;
+      }
+    }
+    mealSaveState();
+    localStorage.setItem('meal-last-pull',Date.now()+'');
+    mealRenderCalendar();
+    mealUpdateSyncBanner();
+    if(!silent)showToast(`✓ 식사 ${imported}개 불러옴`);
+  }catch(e){
+    if(!silent)showToast(`불러오기 실패: ${e.message?.slice(0,30)||'오류'}`);
+  }finally{
+    if(btn){btn.innerHTML='↓ 불러오기';btn.classList.remove('loading');}
+  }
+}
+
+// ════════════════════════════════════════
+// JOURNAL PULL FROM NOTION
+// ════════════════════════════════════════
+async function jPullFromNotion(silent=false){
+  const c=jGetConfig();
+  if(!c.token||!c.dbId||!c.proxy){if(!silent)showToast('노션 설정을 먼저 해주세요');return;}
+  const btn=document.getElementById('j-pull-btn');
+  if(btn){btn.innerHTML='<span class="spin">↻</span> 불러오는 중…';btn.classList.add('loading');}
+  try{
+    const headers={'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'};
+    const dbRes=await fetch(`${c.proxy}/v1/databases/${c.dbId}`,{headers});
+    if(!dbRes.ok)throw new Error('DB 조회 실패');
+    const props=(await dbRes.json()).properties||{};
+    const fp=cs=>cs.find(x=>props[x])||null;
+    const dk=fp(['날짜','Date','date','일자']);
+    const a1k=fp(['확언 1','확언1','Affirmation 1']),a2k=fp(['확언 2','확언2','Affirmation 2']),a3k=fp(['확언 3','확언3','Affirmation 3']);
+    const g1k=fp(['감사 1','감사1','Gratitude 1']),g2k=fp(['감사 2','감사2','Gratitude 2']),g3k=fp(['감사 3','감사3','Gratitude 3']);
+    const mk=fp(['기분','Mood','mood']);
+    // 전체 조회
+    let allResults=[],cursor=undefined;
+    do{
+      const body={page_size:100};
+      if(cursor)body.start_cursor=cursor;
+      const qRes=await fetch(`${c.proxy}/v1/databases/${c.dbId}/query`,{method:'POST',headers,body:JSON.stringify(body)});
+      if(!qRes.ok)break;
+      const qData=await qRes.json();
+      allResults=[...allResults,...(qData.results||[])];
+      cursor=qData.has_more?qData.next_cursor:undefined;
+    }while(cursor && allResults.length<500);
+    // 파싱
+    let imported=0;
+    for(const page of allResults){
+      const p=page.properties||{};
+      const dateVal=dk&&p[dk]?.date?.start;
+      if(!dateVal)continue;
+      const dateStr=dateVal.slice(0,10);
+      const getText=k=>k&&p[k]?.rich_text?.map(r=>r.plain_text).join('')||'';
+      const getMood=k=>k&&(p[k]?.select?.name||p[k]?.rich_text?.map(r=>r.plain_text).join(''))||'';
+      const entry={
+        date:dateStr,
+        affirmations:[getText(a1k),getText(a2k),getText(a3k)],
+        gratitudes:[getText(g1k),getText(g2k),getText(g3k)],
+        mood:getMood(mk),
+        savedAt:page.last_edited_time||new Date().toISOString(),
+        fromNotion:true
+      };
+      // 내용이 하나라도 있을 때만
+      if(entry.affirmations.some(a=>a)||entry.gratitudes.some(g=>g)){
+        await jSaveEntry(entry);imported++;
+      }
+    }
+    jAllEntries=await jGetAllEntries();
+    await jLoadToday();
+    localStorage.setItem('j-last-pull',Date.now()+'');
+    jUpdateSyncBanner();
+    if(!silent)showToast(`✓ 일기 ${imported}개 불러옴`);
+  }catch(e){
+    if(!silent)showToast(`일기 불러오기 실패: ${e.message?.slice(0,30)||'오류'}`);
+  }finally{
+    if(btn){btn.innerHTML='↓ 불러오기';btn.classList.remove('loading');}
+  }
+}
+
+// ════════════════════════════════════════
+// TODO PULL FROM NOTION
+// ════════════════════════════════════════
+async function pPullFromNotion(silent=false){
+  if(!pNotionConfig){if(!silent)showToast('노션 설정을 먼저 해주세요');return;}
+  const proxy=(pNotionConfig.proxy||'').replace(/\/$/,'');
+  const btn=document.getElementById('p-pull-btn');
+  if(btn){btn.innerHTML='<span class="spin">↻</span> 불러오는 중…';btn.classList.add('loading');}
+  try{
+    const headers={'Authorization':'Bearer '+pNotionConfig.apiKey,'Notion-Version':'2022-06-28','Content-Type':'application/json'};
+    const dbRes=await fetch(`${proxy}/v1/databases/${pNotionConfig.dbId}`,{headers});
+    if(!dbRes.ok)throw new Error('DB 조회 실패');
+    const props=(await dbRes.json()).properties||{};
+    const find=cs=>cs.find(c=>props[c])||null;
+    const dk=find(['날짜','Date','date']);
+    const tasksk=find(['할일','Tasks','tasks','내용','Content','할 일 목록']);
+    // 전체 조회
+    let allResults=[],cursor=undefined;
+    do{
+      const body={page_size:100};
+      if(cursor)body.start_cursor=cursor;
+      const qRes=await fetch(`${proxy}/v1/databases/${pNotionConfig.dbId}/query`,{method:'POST',headers,body:JSON.stringify(body)});
+      if(!qRes.ok)break;
+      const qData=await qRes.json();
+      allResults=[...allResults,...(qData.results||[])];
+      cursor=qData.has_more?qData.next_cursor:undefined;
+    }while(cursor && allResults.length<300);
+    // 파싱: 날짜별로 할일 텍스트 파싱
+    let imported=0;
+    const data=pLoadData();
+    for(const page of allResults){
+      const p=page.properties||{};
+      const dateVal=dk&&p[dk]?.date?.start;
+      if(!dateVal)continue;
+      const dateStr=dateVal.slice(0,10);
+      const taskText=tasksk?p[tasksk]?.rich_text?.map(r=>r.plain_text).join('')||'':'';
+      if(!taskText)continue;
+      // "✓ [업무] 내용" 또는 "○ [개인] 내용" 형태 파싱
+      const lines=taskText.split('\n').filter(l=>l.trim());
+      const todos=lines.map((line,i)=>{
+        const doneMatch=line.startsWith('✓');
+        const catMatch=line.match(/\[([^\]]+)\]/);
+        const cat=catMatch?catMatch[1]:'기타';
+        const text=line.replace(/^[✓○]\s*/,'').replace(/\[[^\]]+\]\s*/,'').trim();
+        if(!text)return null;
+        return{id:`notion-${dateStr}-${i}`,text,cat,done:doneMatch,time:'',fromNotion:true};
+      }).filter(Boolean);
+      if(todos.length){
+        // 기존 로컬 항목 중 notionId 없는 것은 유지, notion 불러온 건 교체
+        const local=(data[dateStr]||[]).filter(t=>!t.fromNotion);
+        data[dateStr]=[...local,...todos];
+        imported+=todos.length;
+      }
+    }
+    pSaveData(data);
+    localStorage.setItem('p-last-pull',Date.now()+'');
+    pUpdateSyncBanner();
+    pRenderAll();
+    if(!silent)showToast(`✓ 투두 ${imported}개 불러옴`);
+  }catch(e){
+    if(!silent)showToast(`투두 불러오기 실패: ${e.message?.slice(0,30)||'오류'}`);
+  }finally{
+    if(btn){btn.innerHTML='↓ 불러오기';btn.classList.remove('loading');}
+  }
+}
+
 init();
 </script>
 </body>
