@@ -1372,7 +1372,7 @@ async function pPullFromNotion(silent=false){
       if(!taskText)continue;
       // "✓ [업무] 내용" 또는 "○ [개인] 내용" 형태 파싱
       const lines=taskText.split('\n').filter(l=>l.trim());
-      const todos=lines.map((line,i)=>{
+      const notionTodos=lines.map((line,i)=>{
         const doneMatch=line.startsWith('✓');
         const catMatch=line.match(/\[([^\]]+)\]/);
         const cat=catMatch?catMatch[1]:'기타';
@@ -1380,12 +1380,13 @@ async function pPullFromNotion(silent=false){
         if(!text)return null;
         return{id:`notion-${dateStr}-${i}`,text,cat,done:doneMatch,time:'',fromNotion:true};
       }).filter(Boolean);
-      if(todos.length){
-        // 기존 로컬 항목 중 notionId 없는 것은 유지, notion 불러온 건 교체
-        const local=(data[dateStr]||[]).filter(t=>!t.fromNotion);
-        data[dateStr]=[...local,...todos];
-        imported+=todos.length;
-      }
+      if(!notionTodos.length)continue;
+      // 노션에 있는 text 집합
+      const notionTexts=new Set(notionTodos.map(t=>t.text.trim().toLowerCase()));
+      // 로컬 항목 중 노션에 없는 텍스트만 유지 (중복 완전 제거)
+      const keepLocal=(data[dateStr]||[]).filter(t=>!notionTexts.has((t.text||'').trim().toLowerCase()));
+      data[dateStr]=[...keepLocal,...notionTodos];
+      imported+=notionTodos.length;
     }
     pSaveData(data);
     localStorage.setItem('p-last-pull',Date.now()+'');
