@@ -1222,11 +1222,11 @@ async function mealPullFromNotion(silent=false){
       cursor=qData.has_more?qData.next_cursor:undefined;
     }while(cursor && allResults.length<300);
     // 파싱해서 로컬에 저장
-    // 1단계: DB 스키마 키를 한 번만 찾기 (루프 밖)
     const noteKeyC=Object.keys(props).find(k=>props[k].type==='rich_text'&&k!=='Time'&&(k.includes('Note')||k.includes('메모')||k.includes('내용')));
     const mealTypeKeyC=Object.keys(props).find(k=>props[k].type==='select'&&(k.includes('Meal')||k.includes('식사')||k.includes('Type')));
     const timeKeyC=Object.keys(props).find(k=>props[k].type==='rich_text'&&(k.includes('Time')||k.includes('시간')));
-    // 2단계: 노션 항목을 날짜별로 그룹화
+
+    // 노션 항목을 날짜별로 그룹화
     const notionByDate={};
     for(const page of allResults){
       const p=page.properties||{};
@@ -1241,12 +1241,22 @@ async function mealPullFromNotion(silent=false){
       if(!notionByDate[dateStr])notionByDate[dateStr]=[];
       notionByDate[dateStr].push({id:page.id,notionId:page.id,meal:mealId,text:noteText,photo:null,time:timeText});
     }
-    // 3단계: 날짜별로 — 앱에서 직접 추가한 항목(notionId 없음)은 유지, 노션 항목은 완전 교체(중복 방지)
+
+    // 날짜별로 완전 교체
+    // — 로컬 항목 중 notionId가 있거나, 같은 text+meal이 노션에 있으면 제거 (중복 방지)
+    // — 사진 있는 로컬 항목만 별도 보존
     let imported=0;
     for(const dateStr of Object.keys(notionByDate)){
-      const localOnly=(mealState.entries[dateStr]||[]).filter(e=>!e.notionId);
-      mealState.entries[dateStr]=[...localOnly,...notionByDate[dateStr]];
-      imported+=notionByDate[dateStr].length;
+      const notionItems=notionByDate[dateStr];
+      const notionTexts=new Set(notionItems.map(n=>n.text.trim().toLowerCase()+'|'+n.meal));
+      // 로컬 중 사진 있고 노션에 없는 것만 유지
+      const keepLocal=(mealState.entries[dateStr]||[]).filter(e=>{
+        if(e.photo) return true; // 사진 있는 건 항상 유지
+        const key=(e.text||'').trim().toLowerCase()+'|'+e.meal;
+        return !notionTexts.has(key) && !e.notionId; // 노션에 없고 notionId도 없는 것만
+      });
+      mealState.entries[dateStr]=[...keepLocal,...notionItems];
+      imported+=notionItems.length;
     }
     mealSaveState();
     localStorage.setItem('meal-last-pull',Date.now()+'');
