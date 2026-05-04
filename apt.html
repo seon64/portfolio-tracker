@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>임장 기록부</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EC;
+    --surface: #FDFBF7;
+    --surface2: #F0EDE6;
+    --ink: #1C1A16;
+    --ink2: #6B6760;
+    --ink3: #A8A49F;
+    --accent: #B87333;
+    --accent-light: #F0E8DD;
+    --border: #DDD9D2;
+    --border2: #E8E4DE;
+    --star-on: #C4892A;
+    --star-off: #D9D5CE;
+    --danger: #C0392B;
+    --success: #2E7D5E;
+    --notion: #000000;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.6}
+
+  /* LAYOUT */
+  .shell{display:flex;min-height:100vh}
+  .sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);padding:2rem 1.25rem;display:flex;flex-direction:column;gap:0;position:fixed;top:0;left:0;height:100vh;overflow-y:auto}
+  .main{margin-left:240px;flex:1;padding:2rem 2.5rem;max-width:900px}
+
+  /* SIDEBAR */
+  .logo{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:600;color:var(--ink);letter-spacing:0.02em;padding:0 0 1.5rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+  .logo span{display:block;font-size:11px;font-family:'Noto Sans KR',sans-serif;font-weight:300;color:var(--ink3);letter-spacing:0.08em;margin-top:3px;text-transform:uppercase}
+  .nav-label{font-size:10px;font-weight:500;color:var(--ink3);letter-spacing:0.1em;text-transform:uppercase;padding:0 0.5rem;margin-bottom:6px;margin-top:1.25rem}
+  .nav-btn{width:100%;text-align:left;background:none;border:none;padding:7px 10px;border-radius:6px;font-size:13px;color:var(--ink2);cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:8px;font-family:'Noto Sans KR',sans-serif}
+  .nav-btn:hover{background:var(--surface2);color:var(--ink)}
+  .nav-btn.active{background:var(--accent-light);color:var(--accent);font-weight:500}
+  .nav-btn .icon{font-size:14px;width:16px;text-align:center}
+  .nav-divider{height:1px;background:var(--border);margin:1rem 0}
+  .notion-status{margin-top:auto;padding-top:1rem}
+  .notion-dot{width:7px;height:7px;border-radius:50%;background:var(--ink3);flex-shrink:0}
+  .notion-dot.connected{background:var(--success)}
+  .notion-label{font-size:11px;color:var(--ink3)}
+  .notion-label.connected{color:var(--success)}
+
+  /* PAGE */
+  .page{display:none}.page.active{display:block}
+  .page-title{font-family:'Noto Serif KR',serif;font-size:22px;font-weight:600;color:var(--ink);margin-bottom:0.25rem}
+  .page-sub{font-size:13px;color:var(--ink3);margin-bottom:2rem}
+
+  /* CARDS */
+  .card{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:1.5rem;margin-bottom:1rem}
+  .card-title{font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:1.25rem;padding-bottom:10px;border-bottom:1px solid var(--border2)}
+
+  /* FORM */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .form-group{margin-bottom:0}
+  .form-group.full{grid-column:1/-1}
+  label{display:block;font-size:11px;font-weight:500;letter-spacing:0.06em;color:var(--ink3);margin-bottom:5px;text-transform:uppercase}
+  input[type=text],input[type=date],textarea,select{
+    width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;
+    padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--ink);
+    transition:border-color 0.15s;outline:none
+  }
+  input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+  textarea{resize:none;line-height:1.6}
+
+  /* STAR FIELD */
+  .field-block{padding:10px 0;border-bottom:1px solid var(--border2)}
+  .field-block:last-child{border-bottom:none;padding-bottom:0}
+  .field-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .field-name{font-size:13px;color:var(--ink);font-weight:400}
+  .stars{display:flex;gap:3px}
+  .star{font-size:17px;cursor:pointer;color:var(--star-off);transition:color 0.1s;user-select:none;line-height:1}
+  .star.on{color:var(--star-on)}
+  .score-badge{font-size:11px;color:var(--ink3);min-width:24px;text-align:right}
+  .field-memo{width:100%;background:transparent;border:none;border-bottom:1px dashed var(--border);border-radius:0;padding:4px 0;font-size:12px;color:var(--ink2);font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color 0.15s}
+  .field-memo:focus{border-bottom-color:var(--accent)}
+  .field-memo::placeholder{color:var(--ink3)}
+
+  /* BUTTONS */
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:6px;font-size:13px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all 0.15s;border:1px solid transparent;font-weight:400}
+  .btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn-primary:hover{background:#3a3831}
+  .btn-ghost{background:none;color:var(--ink2);border-color:var(--border)}
+  .btn-ghost:hover{background:var(--surface2);color:var(--ink)}
+  .btn-accent{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn-accent:hover{background:#a06828}
+  .btn-danger{background:none;color:var(--danger);border-color:#e8c5c2}
+  .btn-danger:hover{background:#fdf0ef}
+  .btn-notion{background:var(--notion);color:#fff;border-color:var(--notion)}
+  .btn-notion:hover{background:#333}
+  .btn-full{width:100%;justify-content:center;margin-top:1rem}
+  .btn-row{display:flex;gap:8px;margin-top:1.5rem;flex-wrap:wrap}
+
+  /* LIST */
+  .list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
+  .search-bar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:7px 12px;width:220px}
+  .search-bar input{border:none;background:none;outline:none;font-size:13px;color:var(--ink);font-family:'Noto Sans KR',sans-serif;width:100%}
+  .record-item{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:10px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:1.5rem}
+  .record-item:hover{border-color:var(--accent);box-shadow:0 2px 12px rgba(184,115,51,0.08)}
+  .record-main{flex:1;min-width:0}
+  .record-name{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:600;color:var(--ink);margin-bottom:3px}
+  .record-meta{font-size:12px;color:var(--ink3)}
+  .record-scores{display:flex;gap:8px;flex-shrink:0}
+  .score-pill{text-align:center;padding:6px 12px;background:var(--bg);border-radius:6px;min-width:64px}
+  .score-pill-label{font-size:10px;color:var(--ink3);letter-spacing:0.06em;text-transform:uppercase}
+  .score-pill-val{font-size:15px;font-weight:500;color:var(--ink);line-height:1.2}
+  .score-pill-val.accent{color:var(--accent)}
+  .total-pill{background:var(--accent-light);border-radius:6px;padding:6px 16px;text-align:center}
+  .total-pill .score-pill-label{color:var(--accent)}
+  .total-pill .score-pill-val{color:var(--accent)}
+  .notion-sync-badge{font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--border2);color:var(--ink3);white-space:nowrap}
+  .notion-sync-badge.synced{border-color:#b7dbc6;color:var(--success);background:#f0faf5}
+  .empty{text-align:center;padding:4rem 1rem;color:var(--ink3)}
+  .empty-icon{font-size:32px;margin-bottom:12px}
+  .empty p{font-size:14px}
+
+  /* DETAIL */
+  .detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem}
+  .detail-name{font-family:'Noto Serif KR',serif;font-size:24px;font-weight:600;color:var(--ink)}
+  .detail-meta{font-size:13px;color:var(--ink3);margin-top:4px}
+  .score-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+  .summary-card{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:14px;text-align:center}
+  .summary-card.total{background:var(--accent-light);border-color:#d4a97a}
+  .summary-label{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px}
+  .summary-card.total .summary-label{color:var(--accent)}
+  .summary-val{font-size:20px;font-weight:500;color:var(--ink)}
+  .summary-card.total .summary-val{color:var(--accent)}
+  .detail-row{display:flex;align-items:flex-start;gap:16px;padding:10px 0;border-bottom:1px solid var(--border2)}
+  .detail-row:last-child{border-bottom:none}
+  .detail-row-label{font-size:13px;color:var(--ink2);width:72px;flex-shrink:0;padding-top:1px}
+  .detail-stars{display:flex;gap:3px}
+  .detail-star{font-size:14px;color:var(--star-off)}
+  .detail-star.on{color:var(--star-on)}
+  .detail-memo{font-size:12px;color:var(--ink3);margin-top:3px;line-height:1.5}
+
+  /* NOTION SETTINGS */
+  .settings-section{margin-bottom:2rem}
+  .settings-desc{font-size:13px;color:var(--ink2);line-height:1.7;margin-bottom:1.25rem}
+  .step-list{counter-reset:step;list-style:none;margin-bottom:1.5rem}
+  .step-list li{counter-increment:step;display:flex;gap:12px;margin-bottom:12px;font-size:13px;color:var(--ink2);line-height:1.6}
+  .step-list li::before{content:counter(step);width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .input-with-btn{display:flex;gap:8px}
+  .input-with-btn input{flex:1}
+  code{font-family:monospace;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px;color:var(--accent)}
+  .info-box{background:var(--accent-light);border:1px solid #d4b08a;border-radius:8px;padding:12px 14px;font-size:13px;color:#7a5020;line-height:1.6;margin-top:12px}
+  .warning-box{background:#fff8f0;border:1px solid #f0c87a;border-radius:8px;padding:12px 14px;font-size:13px;color:#7a5c20;line-height:1.6;margin-top:12px}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;opacity:0;transform:translateY(8px);transition:all 0.2s;z-index:1000;pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{background:var(--success)}
+  .toast.error{background:var(--danger)}
+
+  /* RESPONSIVE */
+  @media(max-width:768px){
+    .sidebar{width:100%;height:auto;position:relative;flex-direction:row;padding:1rem;flex-wrap:wrap}
+    .main{margin-left:0;padding:1.25rem}
+    .score-summary{grid-template-columns:repeat(2,1fr)}
+    .record-scores{display:none}
+    .form-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">임장 기록부<span>Field Visit Tracker</span></div>
+  <div class="nav-label">메뉴</div>
+  <button class="nav-btn active" onclick="goPage('list')" id="nav-list"><span class="icon">◈</span> 임장 목록</button>
+  <button class="nav-btn" onclick="goPage('form')" id="nav-form"><span class="icon">＋</span> 새 임장 추가</button>
+  <div class="nav-divider"></div>
+  <div class="nav-label">설정</div>
+  <button class="nav-btn" onclick="goPage('notion')" id="nav-notion"><span class="icon">⬡</span> 노션 연동</button>
+  <div class="notion-status">
+    <div style="display:flex;align-items:center;gap:7px">
+      <div class="notion-dot" id="notion-dot"></div>
+      <span class="notion-label" id="notion-label">노션 미연결</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- LIST PAGE -->
+  <div class="page active" id="page-list">
+    <div class="list-header">
+      <div>
+        <div class="page-title">임장 기록</div>
+        <div class="page-sub" id="list-count">기록 0건</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="search-bar">
+          <span style="color:var(--ink3);font-size:13px">🔍</span>
+          <input type="text" id="search-input" placeholder="단지명 검색..." oninput="renderList()">
+        </div>
+        <button class="btn btn-primary" onclick="goPage('form')">＋ 새 임장</button>
+      </div>
+    </div>
+    <div id="list-container"></div>
+  </div>
+
+  <!-- FORM PAGE -->
+  <div class="page" id="page-form">
+    <div class="page-title">새 임장 기록</div>
+    <div class="page-sub">단지 정보와 평가를 입력하세요</div>
+
+    <div class="card">
+      <div class="card-title">기본 정보</div>
+      <div class="form-grid">
+        <div class="form-group full"><label>단지명 *</label><input type="text" id="f-name" placeholder="예) 래미안 퍼스티지"></div>
+        <div class="form-group"><label>임장일</label><input type="date" id="f-date"></div>
+        <div class="form-group"><label>지역</label><input type="text" id="f-area" placeholder="예) 서울 강남구"></div>
+        <div class="form-group"><label>면적 (㎡)</label><input type="text" id="f-size" placeholder="예) 84"></div>
+        <div class="form-group"><label>호가 (만원)</label><input type="text" id="f-price" placeholder="예) 120,000"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">1. 입지</div>
+      <div id="fields-location"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">2. 상품성</div>
+      <div id="fields-product"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">3. 미래가치</div>
+      <div id="fields-future"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">종합 메모</div>
+      <textarea id="f-note" rows="4" placeholder="전체적인 인상, 특이사항, 투자 판단 등을 자유롭게 기록하세요"></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveRecord()">저장하기</button>
+      <button class="btn btn-ghost" onclick="goPage('list')">취소</button>
+    </div>
+  </div>
+
+  <!-- DETAIL PAGE -->
+  <div class="page" id="page-detail">
+    <div id="detail-container"></div>
+  </div>
+
+  <!-- NOTION PAGE -->
+  <div class="page" id="page-notion">
+    <div class="page-title">노션 연동</div>
+    <div class="page-sub">Notion API를 통해 임장 기록을 자동으로 동기화합니다</div>
+
+    <div class="card settings-section">
+      <div class="card-title">연결 방법</div>
+      <div class="settings-desc">
+        노션 Internal Integration을 만들어 API 키와 데이터베이스 ID를 입력하면<br>임장 기록을 노션 DB에 자동으로 저장할 수 있습니다.
+      </div>
+      <ol class="step-list">
+        <li><span>노션에서 <strong>notion.so/my-integrations</strong> 접속 → "New integration" 클릭 → 이름 입력 후 생성</span></li>
+        <li><span>생성된 Integration의 <code>Internal Integration Secret</code> 복사</span></li>
+        <li><span>노션에서 연동할 데이터베이스 페이지 열기 → 우측 상단 "···" → "Connect to" → 방금 만든 Integration 연결</span></li>
+        <li><span>데이터베이스 URL에서 ID 복사: <code>notion.so/workspace/<strong>[여기가 DB ID]</strong>?v=...</code></span></li>
+        <li><span>아래에 API 키와 DB ID 입력 후 연결 테스트</span></li>
+      </ol>
+      <div class="warning-box">
+        ⚠️ 노션 API는 CORS 정책으로 인해 브라우저에서 직접 호출이 제한됩니다.<br>
+        로컬에서 사용하는 경우 <strong>CORS 허용 브라우저 확장 프로그램</strong>(예: CORS Unblock)을 설치하거나,<br>
+        간단한 프록시 서버를 통해 연동하는 것을 권장합니다.
+      </div>
+    </div>
+
+    <div class="card settings-section">
+      <div class="card-title">API 설정</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-group">
+          <label>Notion Integration Secret (API Key)</label>
+          <div class="input-with-btn">
+            <input type="password" id="notion-key" placeholder="secret_xxxxxxxxxxxxxxxxxx">
+            <button class="btn btn-ghost" onclick="toggleKeyVis()">보기</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Database ID</label>
+          <input type="text" id="notion-db" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        </div>
+        <div class="form-group">
+          <label>프록시 URL (선택 — CORS 우회 시)</label>
+          <input type="text" id="notion-proxy" placeholder="예) http://localhost:3000/notion-proxy">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveNotionSettings()">설정 저장</button>
+        <button class="btn btn-ghost" onclick="testNotionConnection()">연결 테스트</button>
+        <button class="btn btn-danger" onclick="clearNotionSettings()">연결 해제</button>
+      </div>
+      <div class="info-box" id="notion-test-result" style="display:none"></div>
+    </div>
+
+    <div class="card settings-section">
+      <div class="card-title">노션 DB 컬럼 구조</div>
+      <div class="settings-desc">아래 속성들이 노션 데이터베이스에 자동으로 생성/매핑됩니다.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>단지명</strong> · Title</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>임장일</strong> · Date</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>지역</strong> · Rich Text</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>면적</strong> · Number</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>호가</strong> · Number</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>입지 점수</strong> · Number</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>상품성 점수</strong> · Number</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>미래가치 점수</strong> · Number</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>종합 점수</strong> · Number</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>일자리/교통/학군/상권/환경</strong> · Number</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>신축/세대수/조경/주차/커뮤니티</strong> · Number</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px"><strong>교통호재/주거환경</strong> · Number</div>
+        <div style="background:var(--bg);border-radius:6px;padding:8px 12px;grid-column:1/-1"><strong>종합메모</strong> · Rich Text</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== DATA ===== */
+const FIELDS = {
+  location: [
+    {id:'loc-job',label:'일자리'},
+    {id:'loc-trans',label:'교통'},
+    {id:'loc-school',label:'학군'},
+    {id:'loc-commerce',label:'상권'},
+    {id:'loc-env',label:'환경'}
+  ],
+  product: [
+    {id:'pro-new',label:'신축여부'},
+    {id:'pro-units',label:'세대수'},
+    {id:'pro-landscape',label:'조경'},
+    {id:'pro-parking',label:'주차대수'},
+    {id:'pro-community',label:'커뮤니티'}
+  ],
+  future: [
+    {id:'fut-trans',label:'교통호재'},
+    {id:'fut-env',label:'주거환경'}
+  ]
+};
+
+const SEC_LABEL = {location:'입지', product:'상품성', future:'미래가치'};
+
+let records = JSON.parse(localStorage.getItem('imc_v2_records') || '[]');
+let notionSettings = JSON.parse(localStorage.getItem('imc_notion_settings') || '{}');
+
+function persist() { localStorage.setItem('imc_v2_records', JSON.stringify(records)); }
+
+/* ===== NAVIGATION ===== */
+function goPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const nb = document.getElementById('nav-' + id);
+  if (nb) nb.classList.add('active');
+  if (id === 'list') renderList();
+  if (id === 'form') initForm();
+  if (id === 'notion') loadNotionSettings();
+  window.scrollTo(0,0);
+}
+
+/* ===== TOAST ===== */
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ===== STAR WIDGET ===== */
+function buildStarFields(containerId, sectionKey) {
+  const cont = document.getElementById(containerId);
+  cont.innerHTML = '';
+  FIELDS[sectionKey].forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'field-block';
+    div.innerHTML = `
+      <div class="field-top">
+        <span class="field-name">${f.label}</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="stars" id="stars-${f.id}" data-val="0">
+            ${[1,2,3,4,5].map(i=>`<span class="star" data-v="${i}" onclick="setStar('${f.id}',${i})">★</span>`).join('')}
+          </div>
+          <span class="score-badge" id="badge-${f.id}">-</span>
+        </div>
+      </div>
+      <input class="field-memo" type="text" id="memo-${f.id}" placeholder="메모 (선택)">
+    `;
+    cont.appendChild(div);
+  });
+}
+
+function setStar(fieldId, val) {
+  const el = document.getElementById('stars-' + fieldId);
+  const cur = parseInt(el.dataset.val || 0);
+  const nv = cur === val ? 0 : val;
+  el.dataset.val = nv;
+  el.querySelectorAll('.star').forEach(s => s.classList.toggle('on', parseInt(s.dataset.v) <= nv));
+  document.getElementById('badge-' + fieldId).textContent = nv > 0 ? nv : '-';
+}
+
+function initForm() {
+  ['f-name','f-area','f-size','f-price','f-note'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+  buildStarFields('fields-location','location');
+  buildStarFields('fields-product','product');
+  buildStarFields('fields-future','future');
+}
+
+/* ===== SAVE ===== */
+function getFormData() {
+  const data = {};
+  ['location','product','future'].forEach(sec => {
+    data[sec] = {};
+    FIELDS[sec].forEach(f => {
+      data[sec][f.id] = {
+        score: parseInt(document.getElementById('stars-' + f.id)?.dataset.val || 0),
+        memo: document.getElementById('memo-' + f.id)?.value || ''
+      };
+    });
+  });
+  return data;
+}
+
+function calcAvg(secData) {
+  const vals = Object.values(secData).map(v => v.score).filter(s => s > 0);
+  if (!vals.length) return 0;
+  return Math.round(vals.reduce((a,b)=>a+b,0) / vals.length * 10) / 10;
+}
+
+function calcTotal(data) {
+  const avgs = ['location','product','future'].map(s => calcAvg(data[s])).filter(v => v > 0);
+  if (!avgs.length) return 0;
+  return Math.round(avgs.reduce((a,b)=>a+b,0) / avgs.length * 10) / 10;
+}
+
+async function saveRecord() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { toast('단지명을 입력해주세요.', 'error'); return; }
+  const data = getFormData();
+  const rec = {
+    id: Date.now(),
+    name,
+    date: document.getElementById('f-date').value,
+    area: document.getElementById('f-area').value,
+    size: document.getElementById('f-size').value,
+    price: document.getElementById('f-price').value,
+    note: document.getElementById('f-note').value,
+    data,
+    locationAvg: calcAvg(data.location),
+    productAvg: calcAvg(data.product),
+    futureAvg: calcAvg(data.future),
+    total: calcTotal(data),
+    notionPageId: null
+  };
+  records.unshift(rec);
+  persist();
+  toast('저장되었습니다.', 'success');
+
+  if (notionSettings.key && notionSettings.db) {
+    try {
+      const pid = await pushToNotion(rec);
+      if (pid) { rec.notionPageId = pid; persist(); toast('노션에도 동기화되었습니다.', 'success'); }
+    } catch(e) { toast('노션 동기화 실패: ' + e.message, 'error'); }
+  }
+  goPage('list');
+}
+
+/* ===== LIST ===== */
+function renderList() {
+  const q = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+  const filtered = records.filter(r => !q || r.name.toLowerCase().includes(q));
+  document.getElementById('list-count').textContent = `기록 ${records.length}건${q ? ` (검색: ${filtered.length}건)` : ''}`;
+  const cont = document.getElementById('list-container');
+  if (!filtered.length) {
+    cont.innerHTML = `<div class="empty"><div class="empty-icon">◈</div><p>${q ? '검색 결과가 없습니다.' : '임장 기록이 없습니다.<br>새 임장을 추가해 보세요.'}</p></div>`;
+    return;
+  }
+  cont.innerHTML = filtered.map(r => {
+    const syncBadge = r.notionPageId
+      ? `<span class="notion-sync-badge synced">노션 동기화</span>`
+      : (notionSettings.key ? `<span class="notion-sync-badge">미동기화</span>` : '');
+    return `<div class="record-item" onclick="goDetail(${r.id})">
+      <div class="record-main">
+        <div class="record-name">${r.name}</div>
+        <div class="record-meta">${r.date}${r.area ? ' · ' + r.area : ''}${r.price ? ' · ' + r.price + '만원' : ''} ${syncBadge}</div>
+      </div>
+      <div class="record-scores">
+        <div class="score-pill"><div class="score-pill-label">입지</div><div class="score-pill-val">${r.locationAvg || '-'}</div></div>
+        <div class="score-pill"><div class="score-pill-label">상품성</div><div class="score-pill-val">${r.productAvg || '-'}</div></div>
+        <div class="score-pill"><div class="score-pill-label">미래가치</div><div class="score-pill-val">${r.futureAvg || '-'}</div></div>
+        <div class="total-pill"><div class="score-pill-label">종합</div><div class="score-pill-val accent">${r.total || '-'}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ===== DETAIL ===== */
+function goDetail(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('detail-container').innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-name">${r.name}</div>
+        <div class="detail-meta">${r.date}${r.area?' · '+r.area:''}${r.size?' · '+r.size+'㎡':''}${r.price?' · '+r.price+'만원':''}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${!r.notionPageId && notionSettings.key ? `<button class="btn btn-notion" onclick="syncOne(${r.id})">⬡ 노션에 저장</button>` : ''}
+        ${r.notionPageId ? `<button class="btn btn-ghost" onclick="syncOne(${r.id})">⬡ 노션 재동기화</button>` : ''}
+        <button class="btn btn-ghost" onclick="goPage('list')">← 목록</button>
+      </div>
+    </div>
+    <div class="score-summary">
+      <div class="summary-card"><div class="summary-label">입지</div><div class="summary-val">${r.locationAvg || '-'}</div></div>
+      <div class="summary-card"><div class="summary-label">상품성</div><div class="summary-val">${r.productAvg || '-'}</div></div>
+      <div class="summary-card"><div class="summary-label">미래가치</div><div class="summary-val">${r.futureAvg || '-'}</div></div>
+      <div class="summary-card total"><div class="summary-label">종합</div><div class="summary-val">${r.total || '-'}</div></div>
+    </div>
+    ${['location','product','future'].map((sec,i) => `
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">${i+1}. ${SEC_LABEL[sec]}</div>
+        ${FIELDS[sec].map(f => {
+          const v = r.data[sec][f.id];
+          return `<div class="detail-row">
+            <div class="detail-row-label">${f.label}</div>
+            <div>
+              <div class="detail-stars">${[1,2,3,4,5].map(i=>`<span class="detail-star${i<=v.score?' on':''}">★</span>`).join('')}</div>
+              ${v.memo ? `<div class="detail-memo">${v.memo}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('')}
+    ${r.note ? `<div class="card"><div class="card-title">종합 메모</div><p style="font-size:14px;line-height:1.8;color:var(--ink)">${r.note}</p></div>` : ''}
+    <div style="margin-top:1rem"><button class="btn btn-danger" onclick="deleteRecord(${r.id})">이 기록 삭제</button></div>
+  `;
+  goPage('detail');
+  document.getElementById('nav-detail')?.classList.remove('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+}
+
+function deleteRecord(id) {
+  if (!confirm('정말 삭제하시겠습니까?')) return;
+  records = records.filter(r => r.id !== id);
+  persist();
+  toast('삭제되었습니다.');
+  goPage('list');
+}
+
+/* ===== NOTION ===== */
+function loadNotionSettings() {
+  document.getElementById('notion-key').value = notionSettings.key || '';
+  document.getElementById('notion-db').value = notionSettings.db || '';
+  document.getElementById('notion-proxy').value = notionSettings.proxy || '';
+  updateNotionStatus();
+}
+
+function saveNotionSettings() {
+  notionSettings = {
+    key: document.getElementById('notion-key').value.trim(),
+    db: document.getElementById('notion-db').value.trim().replace(/-/g,''),
+    proxy: document.getElementById('notion-proxy').value.trim()
+  };
+  localStorage.setItem('imc_notion_settings', JSON.stringify(notionSettings));
+  updateNotionStatus();
+  toast('설정이 저장되었습니다.', 'success');
+}
+
+function clearNotionSettings() {
+  if (!confirm('노션 연동을 해제하시겠습니까?')) return;
+  notionSettings = {};
+  localStorage.removeItem('imc_notion_settings');
+  loadNotionSettings();
+  toast('노션 연동이 해제되었습니다.');
+}
+
+function updateNotionStatus() {
+  const connected = !!(notionSettings.key && notionSettings.db);
+  document.getElementById('notion-dot').classList.toggle('connected', connected);
+  const lbl = document.getElementById('notion-label');
+  lbl.textContent = connected ? '노션 연결됨' : '노션 미연결';
+  lbl.className = 'notion-label' + (connected ? ' connected' : '');
+}
+
+function toggleKeyVis() {
+  const el = document.getElementById('notion-key');
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function notionApiUrl(path) {
+  const base = notionSettings.proxy
+    ? notionSettings.proxy.replace(/\/$/, '') + '/v1' + path
+    : 'https://api.notion.com/v1' + path;
+  return base;
+}
+
+async function callNotion(method, path, body) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Notion-Version': '2022-06-28'
+  };
+  if (!notionSettings.proxy) headers['Authorization'] = 'Bearer ' + notionSettings.key;
+  const res = await fetch(notionApiUrl(path), {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || '노션 API 오류');
+  return json;
+}
+
+async function testNotionConnection() {
+  const resultEl = document.getElementById('notion-test-result');
+  resultEl.style.display = 'block';
+  resultEl.style.background = 'var(--accent-light)';
+  resultEl.style.borderColor = '#d4b08a';
+  resultEl.style.color = '#7a5020';
+  resultEl.textContent = '연결 테스트 중...';
+  if (!notionSettings.key || !notionSettings.db) {
+    resultEl.textContent = '⚠️ API 키와 DB ID를 먼저 입력하고 저장해주세요.';
+    return;
+  }
+  try {
+    const data = await callNotion('GET', '/databases/' + notionSettings.db);
+    resultEl.style.background = '#f0faf5';
+    resultEl.style.borderColor = '#b7dbc6';
+    resultEl.style.color = 'var(--success)';
+    resultEl.textContent = '✓ 연결 성공! DB: "' + (data.title?.[0]?.plain_text || '이름 없음') + '"';
+  } catch(e) {
+    resultEl.style.background = '#fdf0ef';
+    resultEl.style.borderColor = '#e8c5c2';
+    resultEl.style.color = 'var(--danger)';
+    resultEl.textContent = '✗ 연결 실패: ' + e.message + (e.message.includes('Failed to fetch') ? ' (CORS 문제일 수 있습니다. 프록시 URL을 설정해주세요.)' : '');
+  }
+}
+
+function buildNotionProperties(rec) {
+  const numProp = (val) => ({ number: val || null });
+  const textProp = (val) => ({ rich_text: [{ text: { content: val || '' } }] });
+
+  const props = {
+    '단지명': { title: [{ text: { content: rec.name } }] },
+    '임장일': { date: rec.date ? { start: rec.date } : null },
+    '지역': textProp(rec.area),
+    '면적': numProp(parseFloat(rec.size) || null),
+    '호가': numProp(parseFloat((rec.price||'').replace(/,/g,'')) || null),
+    '입지 점수': numProp(rec.locationAvg),
+    '상품성 점수': numProp(rec.productAvg),
+    '미래가치 점수': numProp(rec.futureAvg),
+    '종합 점수': numProp(rec.total),
+    '종합메모': textProp(rec.note)
+  };
+
+  // individual field scores
+  [...FIELDS.location, ...FIELDS.product, ...FIELDS.future].forEach(f => {
+    const sec = FIELDS.location.includes(f) ? 'location' : FIELDS.product.includes(f) ? 'product' : 'future';
+    props[f.label] = numProp(rec.data[sec][f.id].score || null);
+    if (rec.data[sec][f.id].memo) props[f.label + '_메모'] = textProp(rec.data[sec][f.id].memo);
+  });
+
+  return props;
+}
+
+async function pushToNotion(rec) {
+  const properties = buildNotionProperties(rec);
+  if (rec.notionPageId) {
+    await callNotion('PATCH', '/pages/' + rec.notionPageId, { properties });
+    return rec.notionPageId;
+  } else {
+    const res = await callNotion('POST', '/pages', {
+      parent: { database_id: notionSettings.db },
+      properties
+    });
+    return res.id;
+  }
+}
+
+async function syncOne(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  toast('노션에 동기화 중...');
+  try {
+    const pid = await pushToNotion(r);
+    r.notionPageId = pid;
+    persist();
+    toast('노션 동기화 완료!', 'success');
+    goDetail(id);
+  } catch(e) {
+    toast('동기화 실패: ' + e.message, 'error');
+  }
+}
+
+/* ===== INIT ===== */
+initForm();
+renderList();
+updateNotionStatus();
+</script>
+</body>
+</html>
