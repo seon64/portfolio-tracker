@@ -1097,7 +1097,7 @@
     <div class="modal-title">종목 정보 수정</div>
     <div class="form-group mb-16">
       <label class="form-label">티커</label>
-      <input type="text" id="edit-sm-ticker" style="background:var(--surface2);color:var(--text-muted)" readonly>
+      <input type="text" id="edit-sm-ticker" oninput="this.value=this.value.toUpperCase()">
     </div>
     <div class="form-group mb-16">
       <label class="form-label">종목명</label>
@@ -1696,22 +1696,45 @@ function onEditSmCategorySelect(val) {
 function saveStockMasterEdit() {
   const s = data.stocks.find(x => x.ticker === editStockTicker);
   if (!s) return;
-  const newName = document.getElementById('edit-sm-name').value.trim();
-  const newCat  = document.getElementById('edit-sm-category').value.trim();
-  if (!newName) return alert('종목명을 입력하세요.');
-  if (!newCat)  return alert('분류를 입력하세요.');
-  s.name = newName;
+  const newTicker = document.getElementById('edit-sm-ticker').value.trim().toUpperCase();
+  const newName   = document.getElementById('edit-sm-name').value.trim();
+  const newCat    = document.getElementById('edit-sm-category').value.trim();
+  if (!newTicker) return alert('티커를 입력하세요.');
+  if (!newName)   return alert('종목명을 입력하세요.');
+  if (!newCat)    return alert('분류를 입력하세요.');
+
+  // 티커가 바뀌었고, 다른 종목과 중복되는지 확인
+  if (newTicker !== editStockTicker && data.stocks.find(x => x.ticker === newTicker)) {
+    return alert(`${newTicker}는 이미 등록된 티커입니다.`);
+  }
+
+  // 거래 내역 티커도 일괄 변경
+  if (newTicker !== editStockTicker) {
+    data.trades.filter(t => t.ticker === editStockTicker).forEach(t => { t.ticker = newTicker; });
+    // prices 키도 변경
+    if (data.prices[editStockTicker]) {
+      data.prices[newTicker] = data.prices[editStockTicker];
+      delete data.prices[editStockTicker];
+    }
+  }
+
+  s.ticker   = newTicker;
+  s.name     = newName;
   s.category = newCat;
-  // 기존 거래 내역도 동기화
-  data.trades.filter(t => t.ticker === s.ticker).forEach(t => {
+  // 거래 내역 이름·분류 동기화
+  data.trades.filter(t => t.ticker === newTicker).forEach(t => {
     t.name = newName;
     t.category = newCat;
   });
+
   save();
   closeStockModal();
   renderStockMasterList();
   renderTradeStockChips();
-  if (selectedTradeStock === s.ticker) selectTradeStock(s.ticker); // 선택된 칩 갱신
+  if (selectedTradeStock === editStockTicker || selectedTradeStock === newTicker) {
+    selectedTradeStock = newTicker;
+    selectTradeStock(newTicker);
+  }
 }
 
 function deleteStockMaster(ticker) {
