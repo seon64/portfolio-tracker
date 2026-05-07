@@ -461,7 +461,35 @@
   .swatch:hover { transform: scale(1.15); }
   .swatch.selected { border-color: white; }
 
-  /* scroll */
+  /* ===== MOBILE TOUCH UX ===== */
+  @media (max-width: 768px) {
+    input, select {
+      font-size: 16px !important; /* iOS zoom 방지 */
+      padding: 12px 14px;
+      min-height: 44px;
+    }
+    .btn {
+      min-height: 44px;
+      padding: 12px 18px;
+      font-size: 14px;
+    }
+    .btn-sm {
+      min-height: 36px;
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+    .form-grid { gap: 10px; }
+    .stat-value { font-size: 22px; }
+    .page-header { flex-direction: column !important; align-items: flex-start !important; }
+  }
+
+  /* ===== TABLET TOUCH UX ===== */
+  @media (min-width: 769px) and (max-width: 1100px) {
+    input, select { font-size: 15px; min-height: 42px; }
+    .btn { min-height: 42px; }
+  }
+
+
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -526,9 +554,15 @@
 
     <!-- ===== DASHBOARD ===== -->
     <div id="page-dashboard" class="page active">
-      <div class="page-header">
-        <div class="page-title">DASHBOARD</div>
-        <div class="page-sub">포트폴리오 현황 요약</div>
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div class="page-title">DASHBOARD</div>
+          <div class="page-sub">포트폴리오 현황 요약</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <button class="btn btn-ghost" id="dash-refresh-btn" onclick="dashAutoFetch()" style="white-space:nowrap;font-size:13px">🔄 종가 자동 조회</button>
+          <div id="dash-refresh-status" style="font-size:11px;color:var(--text-muted);text-align:right"></div>
+        </div>
       </div>
 
       <div class="grid-4 mb-20" id="dash-stats"></div>
@@ -689,7 +723,7 @@
     <div id="page-profit" class="page">
       <div class="page-header">
         <div class="page-title">수익 추적</div>
-        <div class="page-sub">매일 종가를 입력하면 수익 흐름을 시각화합니다</div>
+        <div class="page-sub">종가 자동 조회 또는 직접 입력 → 수익 흐름 시각화</div>
       </div>
 
       <div class="card mb-20">
@@ -2081,6 +2115,73 @@ function onProfitViewTypeChange() {
   renderProfitChart();
 }
 
+// ==================== AUTO PRICE FETCH ====================
+// Yahoo Finance를 allorigins CORS 프록시로 호출
+// 한국주식: 티커 뒤에 .KS (코스피) 또는 .KQ (코스닥) 붙이면 됩니다.
+// 앱은 먼저 원본 티커로 시도, 실패하면 .KS로 재시도합니다.
+async function fetchYahooPrice(ticker) {
+  const trySymbol = async (sym) => {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`;
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('network');
+    const json = await res.json();
+    const body = JSON.parse(json.contents);
+    const closes = body?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+    if (!closes || !closes.length) throw new Error('no data');
+    // 가장 최근 null이 아닌 값
+    for (let i = closes.length - 1; i >= 0; i--) {
+      if (closes[i] != null) return closes[i];
+    }
+    throw new Error('all null');
+  };
+
+  // 1) 원본 시도
+  try { return await trySymbol(ticker); } catch(e) {}
+  // 2) .KS (코스피) 시도
+  if (!ticker.includes('.')) {
+    try { return await trySymbol(ticker + '.KS'); } catch(e) {}
+    // 3) .KQ (코스닥) 시도
+    try { return await trySymbol(ticker + '.KQ'); } catch(e) {}
+  }
+  return null;
+}
+
+async function autoFetchPrices() {
+  const holdings = getHoldings();
+  if (!holdings.length) return;
+
+  const btn = document.getElementById('auto-fetch-btn');
+  const statusEl = document.getElementById('auto-fetch-status');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 조회 중...'; }
+  if (statusEl) statusEl.innerHTML = '';
+
+  let successCount = 0, failList = [];
+
+  for (const h of holdings) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--text-muted)">🔍 ${h.ticker} 조회 중...</span>`;
+    try {
+      const price = await fetchYahooPrice(h.ticker);
+      if (price != null) {
+        const inp = document.getElementById('pi-' + h.ticker);
+        if (inp) inp.value = Math.round(price * 100) / 100;
+        successCount++;
+      } else {
+        failList.push(h.ticker);
+      }
+    } catch(e) {
+      failList.push(h.ticker);
+    }
+    // rate limit 방지
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 종가 자동 조회'; }
+  let msg = `<span style="color:var(--accent)">✅ ${successCount}개 조회 완료</span>`;
+  if (failList.length) msg += `<span style="color:var(--accent2);margin-left:10px">⚠️ 실패: ${failList.join(', ')} (수동 입력)</span>`;
+  if (statusEl) statusEl.innerHTML = msg;
+}
+
 function renderPriceInputArea() {
   const holdings = getHoldings();
   const el = document.getElementById('price-input-area');
@@ -2089,116 +2190,68 @@ function renderPriceInputArea() {
     return;
   }
   const today = new Date().toISOString().slice(0,10);
-
-  // 날짜 입력칸은 따로 유지 (재렌더링 시 날짜 초기화 방지)
-  const existingDate = document.getElementById('price-date')?.value || today;
-
   el.innerHTML = `
-    <div class="form-grid mb-16">
-      <div class="form-group">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px">
+      <div class="form-group" style="flex:none">
         <label class="form-label">날짜</label>
-        <input type="date" id="price-date" value="${existingDate}" onchange="loadPricesForDate(this.value)">
+        <input type="date" id="price-date" value="${today}" style="width:160px">
       </div>
-      <div class="form-group" style="align-self:end">
-        <div id="price-date-status" style="font-size:12px;color:var(--text-muted)"></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-ghost" id="auto-fetch-btn" onclick="autoFetchPrices()" style="white-space:nowrap">🔄 종가 자동 조회</button>
+        <div id="auto-fetch-status" style="font-size:12px;min-height:18px"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.6;max-width:320px">
+        Yahoo Finance에서 실시간 종가를 가져옵니다.<br>
+        한국주식은 티커 뒤에 <b>.KS</b>(코스피) 또는 <b>.KQ</b>(코스닥)를 입력하세요.<br>
+        예: <b>005930.KS</b> (삼성전자), <b>035720.KQ</b> (카카오)
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px" id="price-inputs">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:16px" id="price-inputs">
       ${holdings.map(h => {
         const priceData = data.prices[h.ticker] || {};
-        const existing = priceData[existingDate] || '';
+        const existing = priceData[today] || '';
         return `
           <div class="form-group">
-            <label class="form-label">${h.name && h.name !== h.ticker ? `${h.name} (${h.ticker})` : h.ticker} 종가</label>
-            <input type="number" id="pi-${h.ticker}" placeholder="종가 입력" value="${existing}"
-              style="${existing ? 'border-color:var(--accent);' : ''}">
+            <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
+              <span>${h.name && h.name !== h.ticker ? `${h.name} (${h.ticker})` : h.ticker}</span>
+            </label>
+            <input type="number" id="pi-${h.ticker}" placeholder="종가 입력" value="${existing}" style="font-size:15px;padding:12px">
           </div>
         `;
       }).join('')}
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <button class="btn btn-primary" onclick="savePrices()">종가 저장</button>
-      <button class="btn btn-ghost btn-sm" onclick="clearPricesForDate()">이 날짜 초기화</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="savePrices()" style="min-width:120px">💾 종가 저장</button>
+      <button class="btn btn-ghost" onclick="autoFetchAndSave()" style="min-width:160px">⚡ 자동조회 후 저장</button>
     </div>
   `;
-
-  // 상태 메시지 업데이트
-  updatePriceDateStatus(existingDate);
 }
 
-function loadPricesForDate(date) {
-  if (!date) return;
-  const holdings = getHoldings();
-  let filledCount = 0;
-
-  holdings.forEach(h => {
-    const inp = document.getElementById('pi-' + h.ticker);
-    if (!inp) return;
-    const priceData = data.prices[h.ticker] || {};
-    const val = priceData[date] || '';
-    inp.value = val;
-    inp.style.borderColor = val ? 'var(--accent)' : '';
-    if (val) filledCount++;
-  });
-
-  updatePriceDateStatus(date, filledCount, holdings.length);
+async function autoFetchAndSave() {
+  await autoFetchPrices();
+  savePrices(true);
 }
 
-function updatePriceDateStatus(date, filled, total) {
-  const statusEl = document.getElementById('price-date-status');
-  if (!statusEl) return;
-  const holdings = getHoldings();
-  const t = total ?? holdings.length;
-  if (filled === undefined) {
-    filled = holdings.filter(h => data.prices[h.ticker]?.[date]).length;
-  }
-  if (filled === 0) {
-    statusEl.textContent = '⚪ 입력된 종가 없음';
-    statusEl.style.color = 'var(--text-muted)';
-  } else if (filled < t) {
-    statusEl.textContent = `🟡 ${filled}/${t}개 입력됨`;
-    statusEl.style.color = 'var(--accent3)';
-  } else {
-    statusEl.textContent = `✅ ${t}개 모두 입력됨`;
-    statusEl.style.color = 'var(--accent)';
-  }
-}
-
-function clearPricesForDate() {
-  const date = document.getElementById('price-date')?.value;
-  if (!date) return;
-  if (!confirm(`${date}의 종가 데이터를 모두 삭제할까요?`)) return;
-  const holdings = getHoldings();
-  holdings.forEach(h => {
-    if (data.prices[h.ticker]?.[date]) {
-      delete data.prices[h.ticker][date];
-    }
-  });
-  save();
-  loadPricesForDate(date);
-}
-
-function savePrices() {
+function savePrices(silent = false) {
   const date = document.getElementById('price-date').value;
   if (!date) return alert('날짜를 선택하세요.');
   const holdings = getHoldings();
-  let savedCount = 0;
+  let count = 0;
   holdings.forEach(h => {
     const inp = document.getElementById('pi-' + h.ticker);
     if (inp && inp.value) {
       if (!data.prices[h.ticker]) data.prices[h.ticker] = {};
       data.prices[h.ticker][date] = parseFloat(inp.value);
-      inp.style.borderColor = 'var(--accent)';
-      savedCount++;
+      count++;
     }
   });
   save();
   renderProfitChart();
-  updatePriceDateStatus(date);
-  const statusEl = document.getElementById('price-date-status');
-  if (statusEl) {
-    statusEl.textContent = `✅ ${savedCount}개 저장 완료`;
-    statusEl.style.color = 'var(--accent)';
+  if (!silent) {
+    const statusEl = document.getElementById('auto-fetch-status');
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:var(--accent)">✅ ${count}개 종가 저장 완료 (${date})</span>`;
+    }
   }
 }
 
@@ -3003,6 +3056,35 @@ function onProfitPeriodChange() {
 // ==================== UTILS ====================
 function destroyChart(id) {
   if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+// ==================== DASHBOARD AUTO FETCH ====================
+async function dashAutoFetch() {
+  const holdings = getHoldings();
+  if (!holdings.length) return;
+  const btn = document.getElementById('dash-refresh-btn');
+  const statusEl = document.getElementById('dash-refresh-status');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 조회 중...'; }
+  const today = new Date().toISOString().slice(0,10);
+  let ok = 0, fail = [];
+  for (const h of holdings) {
+    if (statusEl) statusEl.textContent = `${h.ticker} 조회 중...`;
+    try {
+      const price = await fetchYahooPrice(h.ticker);
+      if (price != null) {
+        if (!data.prices[h.ticker]) data.prices[h.ticker] = {};
+        data.prices[h.ticker][today] = Math.round(price * 100) / 100;
+        ok++;
+      } else { fail.push(h.ticker); }
+    } catch(e) { fail.push(h.ticker); }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  save();
+  renderDashboard();
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 종가 자동 조회'; }
+  let msg = `✅ ${ok}개 업데이트`;
+  if (fail.length) msg += ` · ⚠️ 실패: ${fail.join(',')}`;
+  if (statusEl) statusEl.textContent = msg;
 }
 
 // ==================== INIT ====================
