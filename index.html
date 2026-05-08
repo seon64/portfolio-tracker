@@ -591,15 +591,21 @@
         <div class="page-sub">종목을 먼저 등록한 뒤, 선택해서 거래를 기록하세요</div>
       </div>
 
-      <!-- STEP 1: 종목 마스터 관리 -->
+      <!-- STEP 1: 종목 마스터 관리 (접기/펼치기) -->
       <div class="card mb-20">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-          <div class="card-title" style="margin-bottom:0">① 종목 등록 · 관리</div>
-          <button class="btn btn-ghost btn-sm" onclick="toggleStockForm()" id="stock-form-toggle">＋ 새 종목 등록</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="card-title" style="margin-bottom:0">종목 등록 · 관리</div>
+            <span id="stock-master-count" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="toggleStockForm()" id="stock-form-toggle">＋ 새 종목</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleStockMasterPanel()" id="stock-master-toggle">▼ 펼치기</button>
+          </div>
         </div>
 
         <!-- 종목 등록 폼 (토글) -->
-        <div id="stock-add-form" style="display:none;border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;background:var(--surface2)">
+        <div id="stock-add-form" style="display:none;border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:14px;background:var(--surface2)">
           <div class="form-grid" style="margin-bottom:12px">
             <div class="form-group">
               <label class="form-label">티커</label>
@@ -622,25 +628,32 @@
           </div>
         </div>
 
-        <!-- 종목 목록 -->
-        <div id="stock-master-list"></div>
+        <!-- 종목 목록 (기본 숨김) -->
+        <div id="stock-master-panel" style="display:none;margin-top:14px">
+          <div id="stock-master-list"></div>
+        </div>
       </div>
 
       <!-- STEP 2: 거래 입력 -->
       <div class="card mb-20">
-        <div class="card-title">② 거래 입력</div>
-        <div id="trade-stock-selector" style="margin-bottom:16px">
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">종목을 선택하세요</div>
-          <div id="trade-stock-chips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        <div class="card-title">거래 입력</div>
+
+        <!-- 종목 드롭다운 -->
+        <div class="form-group" style="margin-bottom:16px">
+          <label class="form-label">종목 선택</label>
+          <select id="trade-stock-dropdown" onchange="selectTradeStock(this.value)"
+            style="font-size:15px;font-weight:600">
+            <option value="">— 종목을 선택하세요 —</option>
+          </select>
         </div>
+
         <div id="trade-input-form" style="display:none">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--accent);flex-wrap:wrap">
-            <span style="font-size:18px">📌</span>
+          <!-- 선택 종목 배지 -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent)">
             <div>
-              <div style="font-weight:700;font-size:15px" id="selected-stock-label">—</div>
-              <div style="font-size:11px;color:var(--text-muted)" id="selected-stock-meta">—</div>
+              <span style="font-weight:700;font-size:14px" id="selected-stock-label">—</span>
+              <span style="font-size:11px;color:var(--text-muted);margin-left:8px" id="selected-stock-meta">—</span>
             </div>
-            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="clearStockSelection()">✕ 해제</button>
           </div>
           <div class="form-grid">
             <div class="form-group">
@@ -675,8 +688,8 @@
             </div>
           </div>
         </div>
-        <div id="trade-no-stock-msg" style="color:var(--text-muted);font-size:13px;padding:8px 0">
-          ↑ 위에서 종목을 먼저 등록하고 선택하세요
+        <div id="trade-no-stock-msg" style="color:var(--text-muted);font-size:13px;padding:4px 0">
+          등록된 종목이 없거나 선택하지 않았습니다
         </div>
       </div>
 
@@ -1601,6 +1614,7 @@ function addStockMaster() {
 }
 
 function renderStockMasterList() {
+  updateStockMasterCount();
   const el = document.getElementById('stock-master-list');
   if (!el) return;
   if (!data.stocks.length) {
@@ -1625,33 +1639,46 @@ function renderStockMasterList() {
   </table>`;
 }
 
+function toggleStockMasterPanel() {
+  const panel = document.getElementById('stock-master-panel');
+  const btn   = document.getElementById('stock-master-toggle');
+  const open  = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '▼ 펼치기' : '▲ 숨기기';
+}
+
+function updateStockMasterCount() {
+  const el = document.getElementById('stock-master-count');
+  if (el) el.textContent = data.stocks.length ? `(${data.stocks.length}개)` : '';
+}
+
 function renderTradeStockChips() {
-  const el = document.getElementById('trade-stock-chips');
-  if (!el) return;
-  if (!data.stocks.length) {
-    el.innerHTML = '<span style="color:var(--text-muted);font-size:12px">등록된 종목이 없습니다</span>';
-    return;
-  }
-  el.innerHTML = data.stocks.map(s => `
-    <div class="account-chip ${selectedTradeStock === s.ticker ? 'selected' : ''}"
-         style="${selectedTradeStock === s.ticker ? 'border-color:var(--accent);background:rgba(0,229,180,.1)' : ''}"
-         onclick="selectTradeStock('${s.ticker}')">
-      <b>${s.ticker}</b>
-      <span style="color:var(--text-muted);font-size:11px">${s.name}</span>
-    </div>
-  `).join('');
+  // 드롭다운 방식으로 교체
+  const dd = document.getElementById('trade-stock-dropdown');
+  if (!dd) return;
+  const prev = dd.value;
+  dd.innerHTML = '<option value="">— 종목을 선택하세요 —</option>' +
+    data.stocks.map(s =>
+      `<option value="${s.ticker}" ${prev === s.ticker ? 'selected' : ''}>${s.ticker}  ${s.name}  [${s.category || '—'}]</option>`
+    ).join('');
+  updateStockMasterCount();
 }
 
 function selectTradeStock(ticker) {
+  if (!ticker) {
+    clearStockSelection();
+    return;
+  }
   selectedTradeStock = ticker;
   const stock = data.stocks.find(s => s.ticker === ticker);
   if (!stock) return;
-  renderTradeStockChips();
+  // 드롭다운 값 동기화
+  const dd = document.getElementById('trade-stock-dropdown');
+  if (dd) dd.value = ticker;
   document.getElementById('selected-stock-label').textContent = `${stock.name} (${stock.ticker})`;
   document.getElementById('selected-stock-meta').textContent = `분류: ${stock.category || '—'}`;
   document.getElementById('trade-input-form').style.display = 'block';
   document.getElementById('trade-no-stock-msg').style.display = 'none';
-  // 거래 금액 초기화
   document.getElementById('t-qty').value = '';
   document.getElementById('t-price').value = '';
   document.getElementById('t-total').value = '';
@@ -1659,7 +1686,8 @@ function selectTradeStock(ticker) {
 
 function clearStockSelection() {
   selectedTradeStock = null;
-  renderTradeStockChips();
+  const dd = document.getElementById('trade-stock-dropdown');
+  if (dd) dd.value = '';
   document.getElementById('trade-input-form').style.display = 'none';
   document.getElementById('trade-no-stock-msg').style.display = 'block';
 }
