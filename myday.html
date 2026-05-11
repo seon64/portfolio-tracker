@@ -288,23 +288,6 @@ input, textarea { -webkit-user-select:text; user-select:text; }
 .text-area::placeholder { color:var(--text3); }
 .weight-input { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--rs); padding:14px; font-size:26px; font-family:'DM Mono'; color:var(--text); outline:none; text-align:center; -webkit-appearance:none; }
 
-/* 투두 추가 모달 */
-.tag-select-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
-.tag-select-btn { padding:6px 13px; border-radius:20px; font-size:12px; border:1px solid var(--border); background:transparent; cursor:pointer; font-family:'Noto Sans KR'; color:var(--text2); transition:all .15s; }
-.tag-select-btn.active { font-weight:500; }
-
-/* 플래너 달력 */
-.planner-cal-grid     { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; }
-.planner-cal-day-name { font-size:10px; color:var(--text3); padding:4px 0; font-weight:500; }
-.planner-cal-day      { aspect-ratio:1; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer; color:var(--text); }
-.planner-cal-day:active { transform:scale(.9); }
-.planner-cal-day.today { font-weight:700; color:var(--green); }
-.planner-cal-day.selected { background:var(--green); color:white; font-weight:600; }
-.planner-cal-day.other-month { color:var(--text3); opacity:.5; }
-.planner-cal-day.has-data { position:relative; }
-.planner-cal-day.has-data::after { content:''; position:absolute; bottom:3px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:var(--green); }
-.planner-cal-day.selected::after { background:rgba(255,255,255,.7); }
-
 /* ═══ TOAST ═══ */
 .toast {
   position:fixed;
@@ -482,8 +465,6 @@ input, textarea { -webkit-user-select:text; user-select:text; }
     </button>
     <button class="nav-item"        id="nav-journal" onclick="switchScreen('journal')">
       <span class="nav-icon">📓</span><span class="nav-label">일기</span>
-    </button>
-      <span class="nav-icon">✅</span><span class="nav-label">투두</span>
     </button>
   </div>
 
