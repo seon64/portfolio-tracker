@@ -202,91 +202,6 @@ input, textarea { -webkit-user-select:text; user-select:text; }
 .recent-card-date    { font-size:11px; color:var(--text3); margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; }
 .recent-card-preview { font-size:13px; color:var(--text2); font-weight:300; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 
-/* ═══ TODO LIST (플래너) ═══ */
-.todo-toolbar {
-  display:flex; align-items:center; gap:10px;
-  padding:12px 16px; background:var(--surface);
-  border-bottom:.5px solid var(--border); flex-shrink:0;
-}
-.todo-date-nav { display:flex; align-items:center; gap:8px; flex:1; }
-.todo-date-btn { width:30px; height:30px; border-radius:50%; border:.5px solid var(--border); background:var(--surface2); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; color:var(--text2); flex-shrink:0; }
-.todo-date-btn:active { transform:scale(.9); }
-.todo-date-label { flex:1; text-align:center; font-size:14px; font-weight:600; letter-spacing:-.3px; cursor:pointer; }
-.today-pill { display:inline-block; background:var(--green-light); color:var(--green); font-size:10px; font-weight:600; padding:2px 7px; border-radius:20px; margin-left:6px; }
-.todo-progress-wrap { padding:8px 16px 0; flex-shrink:0; }
-.todo-progress-row  { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-.todo-progress-meta { font-size:11px; color:var(--text3); font-family:'DM Mono'; }
-.todo-progress-pct  { font-size:13px; font-weight:600; color:var(--green); font-family:'DM Mono'; }
-.todo-track { height:3px; background:var(--bg3); border-radius:2px; overflow:hidden; margin-bottom:10px; }
-.todo-fill  { height:100%; background:var(--green); border-radius:2px; transition:width .4s cubic-bezier(.34,1.56,.64,1); }
-
-/* 할 일 추가 인풋 */
-.todo-add-row {
-  display:flex; align-items:center; gap:10px;
-  margin:10px 16px 6px;
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:var(--r); padding:10px 14px;
-  transition:border-color .2s;
-}
-.todo-add-row:focus-within { border-color:var(--accent); }
-.todo-add-input {
-  flex:1; border:none; background:none; outline:none;
-  font-size:15px; color:var(--text); font-family:'Noto Sans KR';
-  caret-color:var(--accent);
-}
-.todo-add-input::placeholder { color:var(--text3); }
-.todo-add-btn {
-  width:28px; height:28px; border-radius:50%; border:none;
-  background:var(--accent); color:var(--bg); font-size:18px;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-  flex-shrink:0; transition:opacity .15s;
-}
-.todo-add-btn:active { opacity:.7; }
-
-/* 카테고리 필터 */
-.todo-filter-row { display:flex; gap:6px; padding:6px 16px 4px; overflow-x:auto; scrollbar-width:none; flex-shrink:0; }
-.todo-filter-row::-webkit-scrollbar { display:none; }
-.filter-chip {
-  flex:0 0 auto; padding:5px 12px; border-radius:20px; font-size:12px;
-  border:1px solid var(--border); background:transparent; color:var(--text3);
-  cursor:pointer; font-family:'Noto Sans KR'; transition:all .15s;
-}
-.filter-chip.active { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
-
-/* 할 일 아이템 */
-.todo-list { padding:6px 16px 0; }
-.todo-item {
-  display:flex; align-items:flex-start; gap:12px;
-  background:var(--surface); border:1px solid var(--border2);
-  border-radius:var(--rs); padding:13px 14px; margin-bottom:8px;
-  transition:all .2s; position:relative;
-}
-.todo-item.done { opacity:.55; }
-.todo-check {
-  width:22px; height:22px; border-radius:50%;
-  border:2px solid var(--border); background:transparent;
-  flex-shrink:0; margin-top:1px; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  font-size:11px; color:white; transition:all .2s;
-}
-.todo-check.checked { background:var(--green); border-color:var(--green); }
-.todo-content { flex:1; min-width:0; }
-.todo-text {
-  font-size:14px; color:var(--text); line-height:1.5;
-  word-break:break-word;
-}
-.todo-text.done-text { text-decoration:line-through; color:var(--text3); }
-.todo-meta { display:flex; align-items:center; gap:6px; margin-top:4px; }
-.todo-tag  { font-size:10px; padding:2px 7px; border-radius:10px; font-weight:500; }
-.todo-time { font-size:10px; color:var(--text3); font-family:'DM Mono'; }
-.todo-del  { width:24px; height:24px; border-radius:50%; border:none; background:transparent; color:var(--text3); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.todo-del:active { color:#e87a8a; }
-
-/* 빈 상태 */
-.todo-empty { text-align:center; padding:48px 20px; color:var(--text3); }
-.todo-empty-icon { font-size:36px; margin-bottom:12px; opacity:.5; }
-.todo-empty-text { font-size:14px; line-height:1.7; }
-
 /* Notion 패널 (플래너) */
 .notion-panel { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); padding:14px 16px; display:none; margin:10px 16px 0; }
 .notion-panel.visible { display:block; }
@@ -560,61 +475,6 @@ input, textarea { -webkit-user-select:text; user-select:text; }
     </div>
   </div>
 
-  <!-- ══ 플래너(투두) 스크린 ══ -->
-  <div class="screen" id="screen-planner">
-    <div class="sync-banner" id="p-sync-banner" style="display:none">
-      <div><div class="sync-banner-text">☁️ 노션 동기화</div><div class="sync-banner-time" id="p-last-sync">마지막 동기화: -</div></div>
-      <button class="sync-pull-btn" id="p-pull-btn" onclick="pPullFromNotion()">↓ 불러오기</button>
-    </div>
-    <!-- 날짜 네비 -->
-    <div class="todo-toolbar">
-      <div class="todo-date-nav">
-        <div class="todo-date-btn" id="p-prevDay">‹</div>
-        <div class="todo-date-label" id="p-dateLabel" onclick="openPlannerCal()">로딩중...</div>
-        <div class="todo-date-btn" id="p-nextDay">›</div>
-      </div>
-    </div>
-    <!-- 진행률 -->
-    <div class="todo-progress-wrap">
-      <div class="todo-progress-row">
-        <span class="todo-progress-meta" id="p-meta">0 / 0 완료</span>
-        <span class="todo-progress-pct" id="p-pct">0%</span>
-      </div>
-      <div class="todo-track"><div class="todo-fill" id="p-fill" style="width:0%"></div></div>
-    </div>
-    <!-- Notion 패널 -->
-    <div class="notion-panel" id="p-notionPanel">
-      <div class="notion-title" id="p-notionTitle">🔗 Notion DB 연동</div>
-      <div id="p-notionForm">
-        <div class="notion-field"><label>Integration Token</label><input type="password" id="p-nToken" placeholder="secret_xxxx"></div>
-        <div class="notion-field"><label>데이터베이스 ID</label><input type="text" id="p-nDbId" placeholder="xxxxxxxx-xxxx-..."></div>
-        <div class="notion-field"><label>프록시 주소 (CORS 필수)</label><input type="text" id="p-nProxy" placeholder="https://..."></div>
-        <button class="notion-save-btn" id="p-nSaveBtn">연결 확인 및 저장</button>
-        <div id="p-nStatus" style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.5"></div>
-      </div>
-    </div>
-    <!-- 카테고리 필터 -->
-    <div class="todo-filter-row" id="p-filterRow">
-      <button class="filter-chip active" data-cat="all" onclick="pSetFilter(this)">전체</button>
-      <button class="filter-chip" data-cat="업무" onclick="pSetFilter(this)">💼 업무</button>
-      <button class="filter-chip" data-cat="개인" onclick="pSetFilter(this)">🙋 개인</button>
-      <button class="filter-chip" data-cat="건강" onclick="pSetFilter(this)">💪 건강</button>
-      <button class="filter-chip" data-cat="공부" onclick="pSetFilter(this)">📚 공부</button>
-      <button class="filter-chip" data-cat="기타" onclick="pSetFilter(this)">✦ 기타</button>
-    </div>
-    <!-- 할 일 추가 -->
-    <div class="todo-add-row">
-      <input class="todo-add-input" id="p-addInput" placeholder="할 일 추가…" type="text"
-        onkeydown="if(event.key==='Enter')pAddTodo()">
-      <button class="todo-add-btn" onclick="pAddTodo()">＋</button>
-    </div>
-    <!-- 리스트 -->
-    <div class="page-body">
-      <div class="todo-list" id="p-todoList"></div>
-      <div style="height:16px"></div>
-    </div>
-  </div>
-
   <!-- BOTTOM NAV -->
   <div class="bottom-nav">
     <button class="nav-item active" id="nav-meal"    onclick="switchScreen('meal')">
@@ -623,7 +483,6 @@ input, textarea { -webkit-user-select:text; user-select:text; }
     <button class="nav-item"        id="nav-journal" onclick="switchScreen('journal')">
       <span class="nav-icon">📓</span><span class="nav-label">일기</span>
     </button>
-    <button class="nav-item"        id="nav-planner" onclick="switchScreen('planner')">
       <span class="nav-icon">✅</span><span class="nav-label">투두</span>
     </button>
   </div>
@@ -679,32 +538,6 @@ input, textarea { -webkit-user-select:text; user-select:text; }
   </div>
 </div>
 
-<!-- 투두 추가 상세 모달 (카테고리 선택) -->
-<div class="modal-overlay" id="todo-detail-modal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title">할 일 상세</div>
-    <input class="text-area" style="height:auto;padding:12px;margin-bottom:12px;font-size:15px" id="todo-detail-text" placeholder="할 일 내용" type="text">
-    <div style="font-size:11px;color:var(--text3);letter-spacing:.8px;font-weight:500;text-transform:uppercase;margin-bottom:8px">카테고리</div>
-    <div class="tag-select-row" id="todo-tag-select"></div>
-    <button class="save-btn" onclick="pSaveDetailTodo()">추가하기</button>
-  </div>
-</div>
-
-<!-- 플래너 달력 -->
-<div class="modal-overlay" id="p-calModal" onclick="if(event.target===this)closePlannerCal()">
-  <div class="date-picker-sheet">
-    <div class="modal-handle"></div>
-    <div class="sheet-title">날짜 선택</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <button class="cal-nav-btn" id="p-calPrev">‹</button>
-      <div style="font-family:'Noto Serif KR';font-size:15px;font-weight:600" id="p-calMonthLabel"></div>
-      <button class="cal-nav-btn" id="p-calNext">›</button>
-    </div>
-    <div class="planner-cal-grid" id="p-calGrid"></div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -731,8 +564,8 @@ function toggleTheme(){const isLight=document.documentElement.getAttribute('data
 // ════════════════════════════════════════
 // ROUTING
 // ════════════════════════════════════════
-const SCREEN_TITLES={meal:'식사일기',journal:'나의 하루',planner:'투두리스트'};
-const SCREEN_SUBS  ={meal:'오늘 기록 관리',journal:'확언 · 감사 · 기분',planner:'할 일 관리'};
+const SCREEN_TITLES={meal:'식사일기',journal:'나의 하루'};
+const SCREEN_SUBS  ={meal:'오늘 기록 관리',journal:'확언 · 감사 · 기분'};
 
 function switchScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -744,7 +577,6 @@ function switchScreen(name){
   renderTopbarActions(name);
   if(name==='meal'){mealRenderCalendar();mealRefreshSettings();}
   if(name==='journal'){jRenderTodayDate();}
-  if(name==='planner'){pRenderAll();}
 }
 
 function renderTopbarActions(name){
@@ -757,7 +589,6 @@ function renderTopbarActions(name){
     el.innerHTML=`<button class="icon-btn" style="position:relative" onclick="jOpenSettings()"><span style="font-size:14px;font-weight:500;color:var(--text2)">N</span><span class="notion-dot-small" id="j-notionDot"></span></button>
       <button class="icon-btn" onclick="toggleTheme()">🌙</button>`;
     if(jIsConfigured())jUpdateDot('ok');
-  }else if(name==='planner'){
     el.innerHTML=`<button class="icon-btn" onclick="document.getElementById('p-notionPanel').classList.toggle('visible')">N</button>
       <button class="icon-btn" onclick="toggleTheme()">🌙</button>`;
   }
@@ -918,207 +749,6 @@ async function jSyncToNotion(entry){
 }
 
 // ════════════════════════════════════════
-// TODO LIST (플래너)
-// ════════════════════════════════════════
-const TODO_KEY = 'todo-list-v1';
-const P_NOTION_KEY = 'planner-notion-v1';
-const TODO_CATS = [
-  {id:'업무', label:'💼 업무', color:'#8ab4e8'},
-  {id:'개인', label:'🙋 개인', color:'#7ec8a0'},
-  {id:'건강', label:'💪 건강', color:'#e8a86a'},
-  {id:'공부', label:'📚 공부', color:'#d4a0d4'},
-  {id:'기타', label:'✦ 기타',  color:'#a09a92'},
-];
-
-let pCurrentDate = new Date(); pCurrentDate.setHours(0,0,0,0);
-let pCalViewDate = new Date();
-let pFilter = 'all';
-let pNotionConfig = null;
-let pNotionTimer = null;
-let pDetailTag = '기타';
-
-function pDateKey(d){return d.toISOString().split('T')[0];}
-function pIsToday(d){const t=new Date();t.setHours(0,0,0,0);return d.getTime()===t.getTime();}
-function pLoadData(){try{return JSON.parse(localStorage.getItem(TODO_KEY)||'{}');}catch(e){return{};}}
-function pSaveData(d){localStorage.setItem(TODO_KEY,JSON.stringify(d));}
-function pLoadNotion(){try{return JSON.parse(localStorage.getItem(P_NOTION_KEY)||'null');}catch(e){return null;}}
-function pSaveNotion(cfg){localStorage.setItem(P_NOTION_KEY,JSON.stringify(cfg));}
-
-function pGetDayTodos(){
-  const key=pDateKey(pCurrentDate),data=pLoadData();
-  return data[key]||[];
-}
-function pSetDayTodos(todos){
-  const key=pDateKey(pCurrentDate),data=pLoadData();
-  data[key]=todos;pSaveData(data);
-}
-
-function pRenderAll(){
-  pRenderHeader();
-  pRenderTodos();
-}
-
-function pRenderHeader(){
-  const d=pCurrentDate,todayPill=pIsToday(d)?'<span class="today-pill">오늘</span>':'';
-  document.getElementById('p-dateLabel').innerHTML=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${DAYS_KR[d.getDay()]})${todayPill}`;
-  const todos=pGetDayTodos(),total=todos.length,done=todos.filter(t=>t.done).length;
-  const pct=total?Math.round(done/total*100):0;
-  document.getElementById('p-meta').textContent=`${done} / ${total} 완료`;
-  document.getElementById('p-pct').textContent=pct+'%';
-  document.getElementById('p-fill').style.width=pct+'%';
-}
-
-function pRenderTodos(){
-  const todos=pGetDayTodos();
-  const filtered=pFilter==='all'?todos:todos.filter(t=>t.cat===pFilter);
-  const list=document.getElementById('p-todoList');
-  if(!filtered.length){
-    list.innerHTML=`<div class="todo-empty"><div class="todo-empty-icon">${pIsToday(pCurrentDate)?'✨':'📅'}</div><div class="todo-empty-text">${pIsToday(pCurrentDate)?'오늘의 할 일을 추가해 보세요!':'이 날의 할 일이 없어요.'}</div></div>`;
-    return;
-  }
-  // 미완료 먼저, 완료 나중
-  const sorted=[...filtered.filter(t=>!t.done),...filtered.filter(t=>t.done)];
-  list.innerHTML=sorted.map(todo=>{
-    const cat=TODO_CATS.find(c=>c.id===todo.cat)||TODO_CATS[TODO_CATS.length-1];
-    return`<div class="todo-item${todo.done?' done':''}" id="ti-${todo.id}">
-      <button class="todo-check${todo.done?' checked':''}" onclick="pToggle('${todo.id}')">${todo.done?'✓':''}</button>
-      <div class="todo-content">
-        <div class="todo-text${todo.done?' done-text':''}">${todo.text}</div>
-        <div class="todo-meta">
-          <span class="todo-tag" style="background:${cat.color}22;color:${cat.color}">${cat.label}</span>
-          <span class="todo-time">${todo.time||''}</span>
-        </div>
-      </div>
-      <button class="todo-del" onclick="pDelete('${todo.id}')">✕</button>
-    </div>`;
-  }).join('');
-}
-
-function pSetFilter(btn){
-  pFilter=btn.dataset.cat;
-  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
-  btn.classList.add('active');
-  pRenderTodos();
-}
-
-function pAddTodo(){
-  const input=document.getElementById('p-addInput');
-  const text=input.value.trim();
-  if(!text)return;
-  const now=new Date();
-  const todo={id:Date.now()+'',text,cat:'기타',done:false,time:`${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`};
-  const todos=pGetDayTodos();todos.push(todo);pSetDayTodos(todos);
-  input.value='';
-  pRenderAll();
-  pSyncNotionDebounced();
-}
-
-// 상세 추가 모달 (길게 누르거나 + 버튼으로 여는 버전 — 필요 시 확장 가능)
-function pOpenDetailModal(){
-  pDetailTag='기타';
-  document.getElementById('todo-detail-text').value='';
-  const tagSel=document.getElementById('todo-tag-select');
-  tagSel.innerHTML=TODO_CATS.map(c=>`<button class="tag-select-btn${c.id===pDetailTag?' active':''}" style="${c.id===pDetailTag?`background:${c.color}22;color:${c.color};border-color:${c.color}`:'background:transparent'}" data-cat="${c.id}" onclick="pSelectTag(this,'${c.id}')">${c.label}</button>`).join('');
-  document.getElementById('todo-detail-modal').classList.add('open');
-}
-function pSelectTag(btn,cat){
-  pDetailTag=cat;
-  const c=TODO_CATS.find(x=>x.id===cat);
-  document.querySelectorAll('#todo-tag-select .tag-select-btn').forEach(b=>{b.classList.remove('active');b.style.background='transparent';b.style.color='';b.style.borderColor='';});
-  btn.classList.add('active');if(c){btn.style.background=c.color+'22';btn.style.color=c.color;btn.style.borderColor=c.color;}
-}
-function pSaveDetailTodo(){
-  const text=document.getElementById('todo-detail-text').value.trim();if(!text){showToast('내용을 입력해 주세요');return;}
-  const now=new Date();
-  const todo={id:Date.now()+'',text,cat:pDetailTag,done:false,time:`${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`};
-  const todos=pGetDayTodos();todos.push(todo);pSetDayTodos(todos);
-  document.getElementById('todo-detail-modal').classList.remove('open');
-  pRenderAll();pSyncNotionDebounced();
-}
-
-function pToggle(id){
-  const todos=pGetDayTodos(),i=todos.findIndex(t=>t.id===id);if(i<0)return;
-  todos[i].done=!todos[i].done;pSetDayTodos(todos);pRenderAll();pSyncNotionDebounced();
-}
-function pDelete(id){
-  const todos=pGetDayTodos().filter(t=>t.id!==id);pSetDayTodos(todos);pRenderAll();pSyncNotionDebounced();
-}
-
-// 날짜 이동
-document.getElementById('p-prevDay').onclick=()=>{pCurrentDate=new Date(pCurrentDate);pCurrentDate.setDate(pCurrentDate.getDate()-1);pRenderAll();};
-document.getElementById('p-nextDay').onclick=()=>{pCurrentDate=new Date(pCurrentDate);pCurrentDate.setDate(pCurrentDate.getDate()+1);pRenderAll();};
-
-// 달력
-function openPlannerCal(){pCalViewDate=new Date(pCurrentDate);pRenderPlannerCal();document.getElementById('p-calModal').classList.add('open');}
-function closePlannerCal(){document.getElementById('p-calModal').classList.remove('open');}
-document.getElementById('p-calPrev').onclick=()=>{pCalViewDate.setMonth(pCalViewDate.getMonth()-1);pRenderPlannerCal();};
-document.getElementById('p-calNext').onclick=()=>{pCalViewDate.setMonth(pCalViewDate.getMonth()+1);pRenderPlannerCal();};
-function pRenderPlannerCal(){
-  const y=pCalViewDate.getFullYear(),mo=pCalViewDate.getMonth();
-  document.getElementById('p-calMonthLabel').textContent=`${y}년 ${mo+1}월`;
-  const grid=document.getElementById('p-calGrid');grid.innerHTML='';
-  DAYS_KR.forEach(d=>{const s=document.createElement('div');s.className='planner-cal-day-name';s.textContent=d;grid.appendChild(s);});
-  const startDay=new Date(y,mo,1).getDay(),data=pLoadData(),today=new Date();today.setHours(0,0,0,0);const dim=new Date(y,mo+1,0).getDate();
-  for(let i=0;i<startDay;i++){const d2=new Date(y,mo,1-startDay+i);const s=document.createElement('div');s.className='planner-cal-day other-month';s.textContent=d2.getDate();grid.appendChild(s);}
-  for(let d=1;d<=dim;d++){
-    const dt=new Date(y,mo,d),dk=pDateKey(dt),s=document.createElement('div');
-    let cls='planner-cal-day';
-    if(dt.getTime()===today.getTime())cls+=' today';
-    if(dt.getTime()===pCurrentDate.getTime())cls+=' selected';
-    if((data[dk]||[]).length)cls+=' has-data';
-    s.className=cls;s.textContent=d;
-    s.addEventListener('click',()=>{pCurrentDate=dt;closePlannerCal();pRenderAll();});
-    grid.appendChild(s);
-  }
-}
-document.getElementById('p-calModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePlannerCal();});
-
-// Notion 연동
-function pSyncNotionDebounced(){if(!pNotionConfig)return;clearTimeout(pNotionTimer);pNotionTimer=setTimeout(pSyncNotion,2000);}
-async function pSyncNotion(){
-  if(!pNotionConfig)return;
-  const proxy=(pNotionConfig.proxy||'').replace(/\/$/,'');if(!proxy)return;
-  const todos=pGetDayTodos();if(!todos.length)return;
-  const key=pDateKey(pCurrentDate);
-  try{
-    const headers={'Authorization':'Bearer '+pNotionConfig.apiKey,'Notion-Version':'2022-06-28','Content-Type':'application/json'};
-    const dbRes=await fetch(`${proxy}/v1/databases/${pNotionConfig.dbId}`,{headers});if(!dbRes.ok){const e=await dbRes.json().catch(()=>({}));showToast(`플래너 노션 오류: ${e.message||dbRes.status}`);return;}
-    const props=(await dbRes.json()).properties||{};
-    const find=cs=>cs.find(c=>props[c])||null;
-    const tk=Object.keys(props).find(k=>props[k].type==='title')||'이름';
-    const dk=find(['날짜','Date','date']),totk=find(['전체','Total','total']),donek=find(['완료','Done','done']),ratek=find(['달성률','Rate','rate','Progress']),tasksk=find(['할일','Tasks','tasks','내용','Content']);
-    const done=todos.filter(t=>t.done).length,total=todos.length;
-    const taskText=todos.map(t=>`${t.done?'✓':'○'} [${t.cat}] ${t.text}`).join('\n');
-    const dateLabel=`${pCurrentDate.getFullYear()}년 ${pCurrentDate.getMonth()+1}월 ${pCurrentDate.getDate()}일`;
-    const pp={};
-    pp[tk]={title:[{text:{content:dateLabel}}]};
-    if(dk)pp[dk]={date:{start:key}};
-    if(totk&&props[totk]?.type==='number')pp[totk]={number:total};
-    if(donek&&props[donek]?.type==='number')pp[donek]={number:done};
-    if(ratek&&props[ratek]?.type==='number')pp[ratek]={number:total?Math.round(done/total*100):0};
-    if(tasksk)pp[tasksk]={rich_text:[{text:{content:taskText.slice(0,2000)}}]};
-    let existingId=null;
-    if(dk){const qr=await fetch(`${proxy}/v1/databases/${pNotionConfig.dbId}/query`,{method:'POST',headers,body:JSON.stringify({filter:{property:dk,date:{equals:key}},page_size:1})});if(qr.ok){const qd=await qr.json();existingId=qd.results?.[0]?.id||null;}}
-    const saveRes=existingId?await fetch(`${proxy}/v1/pages/${existingId}`,{method:'PATCH',headers,body:JSON.stringify({properties:pp})}):await fetch(`${proxy}/v1/pages`,{method:'POST',headers,body:JSON.stringify({parent:{database_id:pNotionConfig.dbId},properties:pp})});
-    if(!saveRes.ok){const e=await saveRes.json().catch(()=>({}));showToast(`플래너 저장 실패: ${(e.message||saveRes.status).toString().slice(0,40)}`);return;}
-    showToast('✓ 투두 → Notion 저장됨');
-  }catch(e){showToast(`플래너 오류: ${e.message?.slice(0,30)||'네트워크 확인'}`);}
-}
-document.getElementById('p-nSaveBtn').addEventListener('click',async()=>{
-  const k=document.getElementById('p-nToken').value.trim(),d=document.getElementById('p-nDbId').value.trim(),pr=document.getElementById('p-nProxy').value.trim().replace(/\/$/,'');
-  const st=document.getElementById('p-nStatus');
-  if(!k||!d){st.textContent='⚠️ 토큰과 DB ID를 입력해주세요';return;}
-  if(!pr){st.textContent='⚠️ 프록시 주소를 입력해주세요';return;}
-  st.textContent='연결 확인 중…';
-  try{
-    const res=await fetch(`${pr}/v1/databases/${d}`,{headers:{'Authorization':`Bearer ${k}`,'Notion-Version':'2022-06-28'}});
-    const data=await res.json();
-    if(res.ok){pNotionConfig={apiKey:k,dbId:d,proxy:pr};pSaveNotion(pNotionConfig);const title=data.title?.[0]?.plain_text||'DB';const pnames=Object.keys(data.properties||{}).join(', ');st.innerHTML=`✅ 연결됨: <b>${title}</b><br><span style="font-size:10px;color:var(--text3)">${pnames}</span>`;showToast('✓ 투두 Notion 연동 완료');setTimeout(()=>document.getElementById('p-notionPanel').classList.remove('visible'),2500);}
-    else{st.textContent=`❌ 실패: ${data.message||res.status}`;}
-  }catch(e){st.textContent=`❌ 연결 오류: ${e.message?.slice(0,40)||'네트워크 확인'}`;}
-});
-
-// ════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════
 async function init(){
@@ -1135,16 +765,6 @@ async function init(){
   document.getElementById('j-inputDbId').value=localStorage.getItem('notion_db_id')||'';
   document.getElementById('j-inputProxy').value=localStorage.getItem('notion_proxy')||'';
   jUpdateSyncBanner();
-  // 플래너
-  pNotionConfig=pLoadNotion();
-  pUpdateSyncBanner();
-  if(pNotionConfig){
-    let ph='';try{ph=new URL(pNotionConfig.proxy).hostname;}catch(e){ph=pNotionConfig.proxy||'';}
-    document.getElementById('p-notionTitle').innerHTML=`<span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span> Notion 연동됨</span>`;
-    document.getElementById('p-notionForm').innerHTML=`<div style="font-size:13px;color:var(--text2);margin-bottom:4px">API 키: ••••••${pNotionConfig.apiKey.slice(-6)}</div><div style="font-size:12px;color:var(--text3);margin-bottom:4px">DB: ${pNotionConfig.dbId.slice(0,8)}...</div><div style="font-size:12px;color:var(--text3);margin-bottom:12px">프록시: ${ph}</div><button class="notion-save-btn" style="background:var(--surface2);color:var(--text2)" id="p-disconnectBtn">연동 해제</button>`;
-    document.getElementById('p-disconnectBtn')?.addEventListener('click',()=>{pNotionConfig=null;localStorage.removeItem(P_NOTION_KEY);document.getElementById('p-notionPanel').classList.remove('visible');pUpdateSyncBanner();showToast('Notion 연동 해제');});
-  }
-  pRenderAll();
   switchScreen('meal');
   // 앱 시작 시 노션 연동된 탭 자동 동기화
   autoSyncAll();
@@ -1163,7 +783,6 @@ async function autoSyncAll(){
   try{
     if(mealState.notionToken && mealState.notionDbId && mealState.notionProxy) await mealPullFromNotion(true);
     if(jIsConfigured()) await jPullFromNotion(true);
-    if(pNotionConfig) await pPullFromNotion(true);
   }finally{_isSyncing=false;}
 }
 
@@ -1185,12 +804,6 @@ function jUpdateSyncBanner(){
   if(banner)banner.style.display=has?'flex':'none';
   const el=document.getElementById('j-last-sync');
   if(el)el.textContent='마지막 동기화: '+fmtSyncTime(localStorage.getItem('j-last-pull'));
-}
-function pUpdateSyncBanner(){
-  const banner=document.getElementById('p-sync-banner');
-  if(banner)banner.style.display=pNotionConfig?'flex':'none';
-  const el=document.getElementById('p-last-sync');
-  if(el)el.textContent='마지막 동기화: '+fmtSyncTime(localStorage.getItem('p-last-pull'));
 }
 
 // ════════════════════════════════════════
@@ -1334,72 +947,6 @@ async function jPullFromNotion(silent=false){
 }
 
 // ════════════════════════════════════════
-// TODO PULL FROM NOTION
-// ════════════════════════════════════════
-async function pPullFromNotion(silent=false){
-  if(!pNotionConfig){if(!silent)showToast('노션 설정을 먼저 해주세요');return;}
-  const proxy=(pNotionConfig.proxy||'').replace(/\/$/,'');
-  const btn=document.getElementById('p-pull-btn');
-  if(btn){btn.innerHTML='<span class="spin">↻</span> 불러오는 중…';btn.classList.add('loading');}
-  try{
-    const headers={'Authorization':'Bearer '+pNotionConfig.apiKey,'Notion-Version':'2022-06-28','Content-Type':'application/json'};
-    const dbRes=await fetch(`${proxy}/v1/databases/${pNotionConfig.dbId}`,{headers});
-    if(!dbRes.ok)throw new Error('DB 조회 실패');
-    const props=(await dbRes.json()).properties||{};
-    const find=cs=>cs.find(c=>props[c])||null;
-    const dk=find(['날짜','Date','date']);
-    const tasksk=find(['할일','Tasks','tasks','내용','Content','할 일 목록']);
-    // 전체 조회
-    let allResults=[],cursor=undefined;
-    do{
-      const body={page_size:100};
-      if(cursor)body.start_cursor=cursor;
-      const qRes=await fetch(`${proxy}/v1/databases/${pNotionConfig.dbId}/query`,{method:'POST',headers,body:JSON.stringify(body)});
-      if(!qRes.ok)break;
-      const qData=await qRes.json();
-      allResults=[...allResults,...(qData.results||[])];
-      cursor=qData.has_more?qData.next_cursor:undefined;
-    }while(cursor && allResults.length<300);
-    // 파싱: 날짜별로 할일 텍스트 파싱
-    let imported=0;
-    const data=pLoadData();
-    for(const page of allResults){
-      const p=page.properties||{};
-      const dateVal=dk&&p[dk]?.date?.start;
-      if(!dateVal)continue;
-      const dateStr=dateVal.slice(0,10);
-      const taskText=tasksk?p[tasksk]?.rich_text?.map(r=>r.plain_text).join('')||'':'';
-      if(!taskText)continue;
-      // "✓ [업무] 내용" 또는 "○ [개인] 내용" 형태 파싱
-      const lines=taskText.split('\n').filter(l=>l.trim());
-      const notionTodos=lines.map((line,i)=>{
-        const doneMatch=line.startsWith('✓');
-        const catMatch=line.match(/\[([^\]]+)\]/);
-        const cat=catMatch?catMatch[1]:'기타';
-        const text=line.replace(/^[✓○]\s*/,'').replace(/\[[^\]]+\]\s*/,'').trim();
-        if(!text)return null;
-        return{id:`notion-${dateStr}-${i}`,text,cat,done:doneMatch,time:'',fromNotion:true};
-      }).filter(Boolean);
-      if(!notionTodos.length)continue;
-      // 노션에 있는 text 집합
-      const notionTexts=new Set(notionTodos.map(t=>t.text.trim().toLowerCase()));
-      // 로컬 항목 중 노션에 없는 텍스트만 유지 (중복 완전 제거)
-      const keepLocal=(data[dateStr]||[]).filter(t=>!notionTexts.has((t.text||'').trim().toLowerCase()));
-      data[dateStr]=[...keepLocal,...notionTodos];
-      imported+=notionTodos.length;
-    }
-    pSaveData(data);
-    localStorage.setItem('p-last-pull',Date.now()+'');
-    pUpdateSyncBanner();
-    pRenderAll();
-    if(!silent)showToast(`✓ 투두 ${imported}개 불러옴`);
-  }catch(e){
-    if(!silent)showToast(`투두 불러오기 실패: ${e.message?.slice(0,30)||'오류'}`);
-  }finally{
-    if(btn){btn.innerHTML='↓ 불러오기';btn.classList.remove('loading');}
-  }
-}
-
 init();
 </script>
 </body>
