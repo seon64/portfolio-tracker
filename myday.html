@@ -173,6 +173,11 @@ input, textarea { -webkit-user-select:text; user-select:text; }
 .grat-icon  { width:24px; height:24px; border-radius:50%; background:var(--gold-light); color:var(--gold); font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
 .grat-input { flex:1; border:none; background:none; font-size:14px; color:var(--text); font-family:'Noto Serif KR',serif; font-weight:300; line-height:1.6; resize:none; outline:none; min-height:22px; caret-color:var(--gold); }
 .grat-input::placeholder { color:var(--text3); font-style:italic; }
+.reflection-item { background:var(--surface); border:1px solid var(--border2); border-radius:var(--rs); padding:14px 16px; display:flex; align-items:flex-start; gap:12px; transition:border-color .2s; margin-bottom:10px; }
+.reflection-item:focus-within { border-color:#8ab4e8; }
+.refl-icon  { width:24px; height:24px; border-radius:50%; background:rgba(138,180,232,0.12); color:#8ab4e8; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.refl-input { flex:1; border:none; background:none; font-size:14px; color:var(--text); font-family:'Noto Sans KR',sans-serif; font-weight:300; line-height:1.6; resize:none; outline:none; min-height:22px; caret-color:#8ab4e8; }
+.refl-input::placeholder { color:var(--text3); }
 .mood-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:20px; scrollbar-width:none; }
 .mood-row::-webkit-scrollbar { display:none; }
 .mood-btn  { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 14px; border:1px solid var(--border2); border-radius:var(--rs); background:var(--surface); cursor:pointer; transition:all .2s; white-space:nowrap; flex-shrink:0; }
@@ -420,6 +425,10 @@ input, textarea { -webkit-user-select:text; user-select:text; }
         <div class="gratitude-item"><div class="grat-icon">🌸</div><textarea class="grat-input" id="j-grat1" placeholder="오늘 감사한 것 하나…" rows="1" oninput="autoResize(this)"></textarea></div>
         <div class="gratitude-item"><div class="grat-icon">🌿</div><textarea class="grat-input" id="j-grat2" placeholder="소소하지만 행복했던 것…" rows="1" oninput="autoResize(this)"></textarea></div>
         <div class="gratitude-item"><div class="grat-icon">✨</div><textarea class="grat-input" id="j-grat3" placeholder="나 자신에게 감사한 것…" rows="1" oninput="autoResize(this)"></textarea></div>
+        <div class="section-label" style="margin-top:16px">오늘의 반성</div>
+        <div class="reflection-item"><div class="refl-icon">🔍</div><textarea class="refl-input" id="j-refl1" placeholder="오늘 아쉬웠던 점…" rows="1" oninput="autoResize(this)"></textarea></div>
+        <div class="reflection-item"><div class="refl-icon">💭</div><textarea class="refl-input" id="j-refl2" placeholder="더 잘할 수 있었던 것…" rows="1" oninput="autoResize(this)"></textarea></div>
+        <div class="reflection-item"><div class="refl-icon">🌱</div><textarea class="refl-input" id="j-refl3" placeholder="내일은 이렇게 해볼게…" rows="1" oninput="autoResize(this)"></textarea></div>
         <div class="section-label" style="margin-top:16px">오늘의 기분</div>
         <div class="mood-row">
           <button class="mood-btn" data-mood="😊" onclick="jSelectMood(this)"><span class="mood-icon">😊</span><span class="mood-lbl">행복</span></button>
@@ -687,8 +696,9 @@ function jSelectMood(btn){document.querySelectorAll('.mood-btn').forEach(b=>b.cl
 async function jSaveToday(){
   const a1=document.getElementById('j-aff1').value.trim(),a2=document.getElementById('j-aff2').value.trim(),a3=document.getElementById('j-aff3').value.trim();
   const g1=document.getElementById('j-grat1').value.trim(),g2=document.getElementById('j-grat2').value.trim(),g3=document.getElementById('j-grat3').value.trim();
-  if(!a1&&!a2&&!a3&&!g1&&!g2&&!g3){showToast('내용을 입력해 주세요 🖊');return;}
-  const entry={date:todayStr(),affirmations:[a1,a2,a3],gratitudes:[g1,g2,g3],mood:jCurrentMood,savedAt:new Date().toISOString()};
+  const r1=document.getElementById('j-refl1').value.trim(),r2=document.getElementById('j-refl2').value.trim(),r3=document.getElementById('j-refl3').value.trim();
+  if(!a1&&!a2&&!a3&&!g1&&!g2&&!g3&&!r1&&!r2&&!r3){showToast('내용을 입력해 주세요 🖊');return;}
+  const entry={date:todayStr(),affirmations:[a1,a2,a3],gratitudes:[g1,g2,g3],reflections:[r1,r2,r3],mood:jCurrentMood,savedAt:new Date().toISOString()};
   const btn=document.getElementById('j-saveBtn'),sp=document.getElementById('j-syncSpinner'),bt=document.getElementById('j-saveBtnText');
   btn.disabled=true;await jSaveEntry(entry);jAllEntries=await jGetAllEntries();
   if(jIsConfigured()){sp.classList.add('active');bt.textContent='노션 동기화 중…';const ok=await jSyncToNotion(entry);sp.classList.remove('active');jUpdateDot(ok?'ok':'err');showToast(ok?'저장 + 노션 동기화 완료 ✨':'로컬 저장 완료 (노션 실패)');}
@@ -696,9 +706,9 @@ async function jSaveToday(){
   bt.textContent='저장 완료 ✓';btn.classList.add('saved');btn.disabled=false;
   setTimeout(()=>{bt.textContent='저장하기';btn.classList.remove('saved');},2000);
 }
-async function jLoadToday(){const entry=jAllEntries[todayStr()];if(!entry)return;['j-aff1','j-aff2','j-aff3'].forEach((id,i)=>{const el=document.getElementById(id);el.value=(entry.affirmations||[])[i]||'';autoResize(el);});['j-grat1','j-grat2','j-grat3'].forEach((id,i)=>{const el=document.getElementById(id);el.value=(entry.gratitudes||[])[i]||'';autoResize(el);});if(entry.mood){document.querySelectorAll('.mood-btn').forEach(b=>{if(b.dataset.mood===entry.mood){b.classList.add('selected');jCurrentMood=entry.mood;}});}}
+async function jLoadToday(){const entry=jAllEntries[todayStr()];if(!entry)return;['j-aff1','j-aff2','j-aff3'].forEach((id,i)=>{const el=document.getElementById(id);el.value=(entry.affirmations||[])[i]||'';autoResize(el);});['j-grat1','j-grat2','j-grat3'].forEach((id,i)=>{const el=document.getElementById(id);el.value=(entry.gratitudes||[])[i]||'';autoResize(el);});['j-refl1','j-refl2','j-refl3'].forEach((id,i)=>{const el=document.getElementById(id);el.value=(entry.reflections||[])[i]||'';autoResize(el);});if(entry.mood){document.querySelectorAll('.mood-btn').forEach(b=>{if(b.dataset.mood===entry.mood){b.classList.add('selected');jCurrentMood=entry.mood;}});}}
 function jRenderCalendar(){const y=jCalDate.getFullYear(),m=jCalDate.getMonth();document.getElementById('j-cal-month').textContent=`${y}년 ${MONTHS_KR[m]}`;const grid=document.getElementById('j-cal-grid');grid.innerHTML='';DAYS_KR.forEach(d=>{const el=document.createElement('div');el.className='cal-day-label';el.textContent=d;grid.appendChild(el);});const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate(),today=new Date();for(let i=0;i<fd;i++){const el=document.createElement('div');el.className='cal-cell empty';grid.appendChild(el);}for(let d=1;d<=dim;d++){const key=formatKey(y,m,d),el=document.createElement('div');el.className='cal-cell';const num=document.createElement('div');num.className='cal-num';num.textContent=d;el.appendChild(num);if(jAllEntries[key]){const dot=document.createElement('div');dot.className='cal-dot';dot.style.background='var(--accent)';el.appendChild(dot);}if(today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d)el.classList.add('today');if(jSelectedDay===key)el.classList.add('selected');el.onclick=()=>{jSelectedDay=key;document.querySelectorAll('#j-cal-grid .cal-cell.selected').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');jRenderEntryViewer(key);};grid.appendChild(el);}if(jSelectedDay)jRenderEntryViewer(jSelectedDay);}
-function jRenderEntryViewer(key){const viewer=document.getElementById('j-entry-viewer'),entry=jAllEntries[key];if(!entry){viewer.innerHTML=`<div class="no-entry"><div class="no-entry-icon">${key===todayStr()?'✍️':'📭'}</div><div>${key===todayStr()?'오늘 아직 기록이 없어요.<br>오늘 탭에서 작성해 보세요.':'이 날의 기록이 없어요.'}</div></div>`;return;}const affs=(entry.affirmations||[]).filter(a=>a),grats=(entry.gratitudes||[]).filter(a=>a);viewer.innerHTML=`<div class="entry-viewer"><div class="entry-date-label">${keyToDisplay(key)} ${entry.mood||''}</div>${affs.length?`<div class="entry-section-title">확언</div><div class="entry-aff-list">${affs.map((a,i)=>`<div class="entry-aff-row"><span class="entry-aff-num">${i+1}.</span><span>${a}</span></div>`).join('')}</div>`:''}${grats.length?`<div class="entry-section-title">감사일기</div><div class="entry-aff-list">${grats.map((g,i)=>`<div class="entry-aff-row"><span class="entry-aff-num" style="color:var(--gold)">${['🌸','🌿','✨'][i]||'•'}</span><span>${g}</span></div>`).join('')}</div>`:''}</div>`;}
+function jRenderEntryViewer(key){const viewer=document.getElementById('j-entry-viewer'),entry=jAllEntries[key];if(!entry){viewer.innerHTML=`<div class="no-entry"><div class="no-entry-icon">${key===todayStr()?'✍️':'📭'}</div><div>${key===todayStr()?'오늘 아직 기록이 없어요.<br>오늘 탭에서 작성해 보세요.':'이 날의 기록이 없어요.'}</div></div>`;return;}const affs=(entry.affirmations||[]).filter(a=>a),grats=(entry.gratitudes||[]).filter(a=>a),refls=(entry.reflections||[]).filter(a=>a);viewer.innerHTML=`<div class="entry-viewer"><div class="entry-date-label">${keyToDisplay(key)} ${entry.mood||''}</div>${affs.length?`<div class="entry-section-title">확언</div><div class="entry-aff-list">${affs.map((a,i)=>`<div class="entry-aff-row"><span class="entry-aff-num">${i+1}.</span><span>${a}</span></div>`).join('')}</div>`:''}${grats.length?`<div class="entry-section-title">감사일기</div><div class="entry-aff-list">${grats.map((g,i)=>`<div class="entry-aff-row"><span class="entry-aff-num" style="color:var(--gold)">${['🌸','🌿','✨'][i]||'•'}</span><span>${g}</span></div>`).join('')}</div>`:''}${refls.length?`<div class="entry-section-title" style="color:#8ab4e8">오늘의 반성</div><div class="entry-aff-list">${refls.map((r,i)=>`<div class="entry-aff-row"><span class="entry-aff-num" style="color:#8ab4e8">${['🔍','💭','🌱'][i]||'•'}</span><span>${r}</span></div>`).join('')}</div>`:''}</div>`;}
 function jChangeMonth(dir){jCalDate=new Date(jCalDate.getFullYear(),jCalDate.getMonth()+dir,1);jSelectedDay=null;document.getElementById('j-entry-viewer').innerHTML='';jRenderCalendar();}
 function jRenderStats(){const entries=Object.values(jAllEntries).sort((a,b)=>b.date.localeCompare(a.date));document.getElementById('j-totalDays').textContent=entries.length;const now=new Date();document.getElementById('j-thisMonth').textContent=entries.filter(e=>e.date.startsWith(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`)).length;document.getElementById('j-totalAff').textContent=entries.reduce((s,e)=>s+(e.affirmations||[]).filter(a=>a).length,0);let streak=0,cd=new Date();cd.setHours(0,0,0,0);while(jAllEntries[`${cd.getFullYear()}-${String(cd.getMonth()+1).padStart(2,'0')}-${String(cd.getDate()).padStart(2,'0')}`]){streak++;cd.setDate(cd.getDate()-1);}document.getElementById('j-streakCount').textContent=streak+'일';const we=document.getElementById('j-streakWeeks');we.innerHTML='';for(let i=27;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const key=formatKey(d.getFullYear(),d.getMonth(),d.getDate());const dot=document.createElement('div');dot.className='streak-dot'+(jAllEntries[key]?' filled':'');we.appendChild(dot);}const re=document.getElementById('j-recentEntries');re.innerHTML='';if(!entries.length){re.innerHTML='<div class="no-entry"><div class="no-entry-icon">🌱</div><div>아직 기록이 없어요.<br>오늘 첫 번째 기록을 남겨보세요!</div></div>';return;}entries.slice(0,5).forEach(entry=>{const card=document.createElement('div');card.className='recent-card';const preview=entry.affirmations?.find(a=>a)||entry.gratitudes?.find(a=>a)||'';card.innerHTML=`<div class="recent-card-date"><span>${keyToDisplay(entry.date)}</span><span>${entry.mood||''}</span></div><div class="recent-card-preview">${preview||'내용 없음'}</div>`;re.appendChild(card);});}
 function jOpenSettings(){document.getElementById('j-settingsOverlay').classList.add('open');}
@@ -715,10 +725,12 @@ async function jSyncToNotion(entry){
     const tk=Object.keys(props).find(k=>props[k].type==='title')||'이름';
     const dk=fp(['날짜','Date','date','일자']),a1k=fp(['확언 1','확언1','Affirmation 1']),a2k=fp(['확언 2','확언2','Affirmation 2']),a3k=fp(['확언 3','확언3','Affirmation 3']);
     const g1k=fp(['감사 1','감사1','Gratitude 1']),g2k=fp(['감사 2','감사2','Gratitude 2']),g3k=fp(['감사 3','감사3','Gratitude 3']),mk=fp(['기분','Mood','mood']);
+    const r1k=fp(['반성 1','반성1','Reflection 1']),r2k=fp(['반성 2','반성2','Reflection 2']),r3k=fp(['반성 3','반성3','Reflection 3']);
     const pp={};pp[tk]={title:[{text:{content:entry.date}}]};
     if(dk)pp[dk]={date:{start:entry.date}};
     if(a1k)pp[a1k]={rich_text:[{text:{content:entry.affirmations?.[0]||''}}]};if(a2k)pp[a2k]={rich_text:[{text:{content:entry.affirmations?.[1]||''}}]};if(a3k)pp[a3k]={rich_text:[{text:{content:entry.affirmations?.[2]||''}}]};
     if(g1k)pp[g1k]={rich_text:[{text:{content:entry.gratitudes?.[0]||''}}]};if(g2k)pp[g2k]={rich_text:[{text:{content:entry.gratitudes?.[1]||''}}]};if(g3k)pp[g3k]={rich_text:[{text:{content:entry.gratitudes?.[2]||''}}]};
+    if(r1k)pp[r1k]={rich_text:[{text:{content:entry.reflections?.[0]||''}}]};if(r2k)pp[r2k]={rich_text:[{text:{content:entry.reflections?.[1]||''}}]};if(r3k)pp[r3k]={rich_text:[{text:{content:entry.reflections?.[2]||''}}]};
     if(mk&&entry.mood)pp[mk]=props[mk]?.type==='select'?{select:{name:entry.mood}}:{rich_text:[{text:{content:entry.mood}}]};
     let existingId=null;
     if(dk){const qr=await fetch(`${c.proxy}/v1/databases/${c.dbId}/query`,{method:'POST',headers:{'Authorization':`Bearer ${c.token}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'},body:JSON.stringify({filter:{property:dk,date:{equals:entry.date}},page_size:1})});if(qr.ok){const qd=await qr.json();existingId=qd.results?.[0]?.id||null;}}
@@ -881,6 +893,7 @@ async function jPullFromNotion(silent=false){
     const dk=fp(['날짜','Date','date','일자']);
     const a1k=fp(['확언 1','확언1','Affirmation 1']),a2k=fp(['확언 2','확언2','Affirmation 2']),a3k=fp(['확언 3','확언3','Affirmation 3']);
     const g1k=fp(['감사 1','감사1','Gratitude 1']),g2k=fp(['감사 2','감사2','Gratitude 2']),g3k=fp(['감사 3','감사3','Gratitude 3']);
+    const r1k=fp(['반성 1','반성1','Reflection 1']),r2k=fp(['반성 2','반성2','Reflection 2']),r3k=fp(['반성 3','반성3','Reflection 3']);
     const mk=fp(['기분','Mood','mood']);
     // 전체 조회
     let allResults=[],cursor=undefined;
@@ -906,6 +919,7 @@ async function jPullFromNotion(silent=false){
         date:dateStr,
         affirmations:[getText(a1k),getText(a2k),getText(a3k)],
         gratitudes:[getText(g1k),getText(g2k),getText(g3k)],
+        reflections:[getText(r1k),getText(r2k),getText(r3k)],
         mood:getMood(mk),
         savedAt:page.last_edited_time||new Date().toISOString(),
         fromNotion:true
