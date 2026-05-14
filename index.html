@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>포트폴리오 트래커</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Firebase SDK (compat - 로컬 파일에서도 동작) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
@@ -928,89 +931,134 @@
     <div id="page-sync" class="page">
       <div class="page-header">
         <div class="page-title">기기 동기화</div>
-        <div class="page-sub">iPhone ↔ iPad 데이터 옮기기 (AirDrop / iCloud)</div>
+        <div class="page-sub">Firebase 실시간 자동 동기화 — 노트북·폰·아이패드 어디서나</div>
       </div>
 
-      <!-- EXPORT -->
+      <!-- Firebase 연결 상태 -->
       <div class="card mb-20">
-        <div class="card-title">📤 내보내기 — 이 기기에서 데이터 저장</div>
-        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
-          아래 버튼을 누르면 현재 모든 데이터(계좌·거래·종가)가 <b style="color:var(--text)">JSON 파일</b>로 저장됩니다.<br>
-          저장된 파일을 <b style="color:var(--accent)">AirDrop</b> 또는 <b style="color:var(--accent)">iCloud Drive</b>로 다른 기기에 전송하세요.
-        </p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-          <button class="btn btn-primary" onclick="exportData()">📤 JSON 내보내기</button>
-          <span id="export-status" style="font-size:12px;color:var(--text-muted)"></span>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div class="card-title" style="margin-bottom:0">☁️ Firebase 연결 상태</div>
+          <div id="fb-status-badge" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:700;background:var(--surface2);border:1px solid var(--border)">
+            <span id="fb-status-dot" style="width:8px;height:8px;border-radius:50%;background:#888;display:inline-block"></span>
+            <span id="fb-status-text">설정 안됨</span>
+          </div>
         </div>
-        <div style="height:1px;background:var(--border);margin-bottom:12px"></div>
-        <div style="font-size:11px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">CSV 다운로드</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-ghost" onclick="exportTradesCSV()">📊 거래내역 CSV</button>
-          <button class="btn btn-ghost" onclick="exportPricesCSV()">📈 종가데이터 CSV</button>
-        </div>
-        <div class="divider"></div>
-        <div style="background:var(--surface2);border-radius:10px;padding:16px;font-size:12px;color:var(--text-dim);line-height:2">
-          <b style="color:var(--text);display:block;margin-bottom:6px">📱 전송 방법</b>
-          <b style="color:var(--accent)">AirDrop:</b> 파일 앱 → 저장된 파일 → 공유 → AirDrop → 상대 기기 선택<br>
-          <b style="color:var(--accent)">iCloud:</b> 파일 앱 → 파일을 iCloud Drive로 이동 → 다른 기기 파일 앱에서 열기
+        <div id="fb-connected-info" style="display:none;margin-top:12px;padding:12px;background:rgba(0,229,180,.08);border-radius:8px;border:1px solid rgba(0,229,180,.2);font-size:13px;color:var(--text-dim)">
+          <span id="fb-project-label"></span>
+          <button class="btn btn-ghost btn-sm" style="margin-left:12px" onclick="disconnectFirebase()">연결 해제</button>
         </div>
       </div>
 
-      <!-- IMPORT -->
-      <div class="card mb-20">
-        <div class="card-title">📥 가져오기 — 다른 기기 데이터 불러오기</div>
-        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
-          다른 기기에서 내보낸 JSON 파일을 선택하면 데이터가 <b style="color:var(--accent2)">현재 기기에 덮어씌워집니다.</b><br>
-          가져오기 전에 현재 데이터를 먼저 내보내두는 것을 권장합니다.
+      <!-- Firebase 설정 입력 -->
+      <div class="card mb-20" id="fb-config-card">
+        <div class="card-title">🔧 Firebase 설정</div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.8">
+          Firebase 콘솔에서 발급받은 설정값을 붙여넣으세요.<br>
+          <span style="color:var(--accent)">설정값은 이 기기 localStorage에만 저장되며, 다른 사람에게 공유되지 않습니다.</span>
         </p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label">API Key</label>
+            <input type="text" id="fb-apiKey" placeholder="AIzaSy...">
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label">Auth Domain</label>
+            <input type="text" id="fb-authDomain" placeholder="your-project.firebaseapp.com">
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label">Project ID</label>
+            <input type="text" id="fb-projectId" placeholder="your-project-id">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="connectFirebase()">🔗 Firebase 연결</button>
+          <button class="btn btn-ghost" onclick="pasteFirebaseConfig()">📋 JSON 전체 붙여넣기</button>
+          <span id="fb-connect-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+        <!-- JSON 붙여넣기 영역 -->
+        <div id="fb-json-paste-area" style="display:none;margin-top:12px">
+          <textarea id="fb-json-input" style="width:100%;height:140px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;resize:vertical" placeholder='Firebase 콘솔에서 복사한 firebaseConfig 객체를 붙여넣으세요:
+{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  ...
+}'></textarea>
+          <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="applyFirebaseJson()">✅ 적용</button>
+        </div>
+      </div>
+
+      <!-- 수동 백업/복원 (항상 사용 가능) -->
+      <div class="card mb-20">
+        <div class="card-title">📦 수동 백업 / 복원</div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
+          Firebase 없이도 JSON 파일로 수동 백업·복원할 수 있습니다.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <button class="btn btn-ghost" onclick="exportData()">📤 JSON 내보내기</button>
           <label class="btn btn-ghost" style="cursor:pointer">
-            📥 JSON 파일 선택
+            📥 JSON 가져오기
             <input type="file" accept=".json" id="import-file" style="display:none" onchange="importData(event)">
           </label>
-          <span id="import-status" style="font-size:12px;color:var(--text-muted)"></span>
-        </div>
-      </div>
-
-      <!-- MERGE -->
-      <div class="card mb-20">
-        <div class="card-title">🔀 병합 가져오기 — 두 기기 데이터 합치기</div>
-        <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.7">
-          덮어쓰지 않고 <b style="color:var(--text)">기존 데이터에 추가</b>합니다. 중복 거래는 자동으로 제거됩니다.
-        </p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <label class="btn btn-ghost" style="cursor:pointer">
-            🔀 병합할 JSON 파일 선택
+            🔀 병합 가져오기
             <input type="file" accept=".json" id="merge-file" style="display:none" onchange="mergeData(event)">
           </label>
-          <span id="merge-status" style="font-size:12px;color:var(--text-muted)"></span>
         </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="exportTradesCSV()">📊 거래내역 CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportPricesCSV()">📈 종가데이터 CSV</button>
+        </div>
+        <span id="export-status" style="font-size:12px;color:var(--text-muted);display:block;margin-top:8px"></span>
+        <span id="import-status" style="font-size:12px;color:var(--text-muted);display:block"></span>
+        <span id="merge-status" style="font-size:12px;color:var(--text-muted);display:block"></span>
       </div>
 
-      <!-- GUIDE -->
+      <!-- 가이드 -->
       <div class="card">
-        <div class="card-title">💡 권장 사용 흐름</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+        <div class="card-title">📖 Firebase 설정 방법 (5분)</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:16px">
           <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
             <div style="font-size:22px;margin-bottom:8px">1️⃣</div>
-            <div style="font-weight:700;margin-bottom:4px">iPhone에서 입력</div>
-            <div style="font-size:12px;color:var(--text-muted)">거래 내역, 종가 등 데이터 입력</div>
+            <div style="font-weight:700;margin-bottom:6px">Firebase 콘솔 접속</div>
+            <div style="font-size:12px;color:var(--text-muted);line-height:1.7">
+              <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent)">console.firebase.google.com</a> 접속 → 구글 로그인 → <b>프로젝트 만들기</b>
+            </div>
           </div>
           <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
             <div style="font-size:22px;margin-bottom:8px">2️⃣</div>
-            <div style="font-weight:700;margin-bottom:4px">내보내기</div>
-            <div style="font-size:12px;color:var(--text-muted)">동기화 탭 → 데이터 내보내기</div>
+            <div style="font-weight:700;margin-bottom:6px">Firestore 활성화</div>
+            <div style="font-size:12px;color:var(--text-muted);line-height:1.7">
+              왼쪽 메뉴 → <b>Firestore Database</b> → <b>데이터베이스 만들기</b> → <b>테스트 모드</b> 선택
+            </div>
           </div>
           <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
             <div style="font-size:22px;margin-bottom:8px">3️⃣</div>
-            <div style="font-weight:700;margin-bottom:4px">AirDrop 전송</div>
-            <div style="font-size:12px;color:var(--text-muted)">JSON 파일을 iPad로 AirDrop</div>
+            <div style="font-weight:700;margin-bottom:6px">앱 등록 & 설정값 복사</div>
+            <div style="font-size:12px;color:var(--text-muted);line-height:1.7">
+              프로젝트 설정(⚙️) → <b>앱 추가</b> → 웹(&lt;/&gt;) → 앱 등록 → <b>firebaseConfig</b> 복사
+            </div>
           </div>
           <div style="background:var(--surface2);border-radius:10px;padding:16px;border:1px solid var(--border)">
             <div style="font-size:22px;margin-bottom:8px">4️⃣</div>
-            <div style="font-weight:700;margin-bottom:4px">iPad에서 가져오기</div>
-            <div style="font-size:12px;color:var(--text-muted)">동기화 탭 → JSON 파일 선택</div>
+            <div style="font-weight:700;margin-bottom:6px">위에 붙여넣기</div>
+            <div style="font-size:12px;color:var(--text-muted);line-height:1.7">
+              이 페이지 위 <b style="color:var(--accent)">📋 JSON 전체 붙여넣기</b> 버튼 → 복사한 설정 붙여넣기 → 연결
+            </div>
           </div>
+        </div>
+        <div style="background:rgba(0,229,180,.06);border:1px solid rgba(0,229,180,.2);border-radius:10px;padding:16px;font-size:12px;color:var(--text-dim);line-height:2">
+          <b style="color:var(--accent);display:block;margin-bottom:4px">⚠️ 보안 주의사항</b>
+          Firestore → 규칙(Rules) 탭에서 30일 뒤 테스트 모드가 만료됩니다.<br>
+          만료 전에 아래 규칙으로 교체하세요 (본인만 사용하는 개인 DB):
+          <pre style="margin-top:8px;background:var(--bg);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
         </div>
       </div>
     </div>
@@ -1312,8 +1360,163 @@ let editAccId = null;
 let analyzeTab = 'account';
 let chartInstances = {};
 
+// ==================== FIREBASE ====================
+let _fbApp = null;
+let _fbDb = null;
+let _fbUnsubscribe = null;
+let _fbSaveTimer = null;
+let _fbRemoteUpdate = false; // 원격 업데이트 중 로컬 save 방지 플래그
+
+async function connectFirebase(configOverride) {
+  const statusEl = document.getElementById('fb-connect-status');
+  try {
+    const cfg = configOverride || {
+      apiKey:     document.getElementById('fb-apiKey').value.trim(),
+      authDomain: document.getElementById('fb-authDomain').value.trim(),
+      projectId:  document.getElementById('fb-projectId').value.trim(),
+    };
+    if (!cfg.apiKey || !cfg.projectId) {
+      if (statusEl) statusEl.textContent = '❌ API Key와 Project ID를 입력하세요';
+      return;
+    }
+    if (statusEl) statusEl.textContent = '⏳ 연결 중...';
+
+    // 기존 연결 해제
+    if (_fbUnsubscribe) { _fbUnsubscribe(); _fbUnsubscribe = null; }
+    if (_fbApp) {
+      try { await _fbApp.delete(); } catch(e) {}
+    }
+
+    // compat 방식 초기화
+    _fbApp = firebase.initializeApp(cfg, 'folio-' + Date.now());
+    _fbDb  = firebase.firestore(_fbApp);
+
+    // 설정 저장
+    localStorage.setItem('fb_config', JSON.stringify(cfg));
+
+    // 실시간 리스너 등록
+    const docRef = _fbDb.collection('folio').doc('data');
+    _fbUnsubscribe = docRef.onSnapshot(snap => {
+      if (snap.exists) {
+        const remote = snap.data().payload;
+        if (remote) {
+          _fbRemoteUpdate = true;
+          data = JSON.parse(remote);
+          localStorage.setItem('folio_data', remote);
+          const activePage = document.querySelector('.page.active');
+          if (activePage) {
+            const p = activePage.id.replace('page-', '');
+            setTimeout(() => {
+              if (p === 'dashboard') renderDashboard();
+              else if (p === 'trade') renderTradeForm();
+              else if (p === 'accounts') renderAccounts();
+              else if (p === 'analyze') renderAnalyze();
+              else if (p === 'profit') renderProfit();
+              else if (p === 'history') renderHistory();
+              else if (p === 'dividend') renderDividend();
+              else if (p === 'realized') renderRealized();
+            }, 50);
+            _fbRemoteUpdate = false;
+          }
+        }
+      }
+    });
+
+    // 현재 로컬 데이터를 Firebase에 업로드
+    await docRef.set({ payload: JSON.stringify(data) });
+
+    updateFbStatusUI(true, cfg.projectId);
+    if (statusEl) statusEl.textContent = '✅ 연결됨';
+  } catch (e) {
+    console.error(e);
+    if (statusEl) statusEl.textContent = '❌ 연결 실패: ' + e.message;
+    updateFbStatusUI(false);
+  }
+}
+
+function disconnectFirebase() {
+  if (_fbUnsubscribe) { _fbUnsubscribe(); _fbUnsubscribe = null; }
+  _fbApp = null; _fbDb = null;
+  localStorage.removeItem('fb_config');
+  updateFbStatusUI(false);
+}
+
+function updateFbStatusUI(connected, projectId) {
+  const dot  = document.getElementById('fb-status-dot');
+  const txt  = document.getElementById('fb-status-text');
+  const info = document.getElementById('fb-connected-info');
+  const label = document.getElementById('fb-project-label');
+  const card  = document.getElementById('fb-config-card');
+  if (!dot) return;
+  if (connected) {
+    dot.style.background = '#00e5b4';
+    txt.textContent = '연결됨 ✓';
+    info.style.display = 'block';
+    if (label) label.textContent = '프로젝트: ' + projectId;
+    if (card) card.style.display = 'none';
+  } else {
+    dot.style.background = '#ff4e6a';
+    txt.textContent = '연결 안됨';
+    info.style.display = 'none';
+    if (card) card.style.display = 'block';
+  }
+}
+
+function pasteFirebaseConfig() {
+  const area = document.getElementById('fb-json-paste-area');
+  if (area) area.style.display = area.style.display === 'none' ? 'block' : 'none';
+}
+
+function applyFirebaseJson() {
+  const raw = document.getElementById('fb-json-input').value.trim();
+  try {
+    // JS 객체 형식 → JSON 변환 (키에 따옴표 없는 경우 처리)
+    const cleaned = raw
+      .replace(/^const\s+\w+\s*=\s*/, '')
+      .replace(/;$/, '')
+      .replace(/(\w+):/g, '"$1":')
+      .replace(/'/g, '"');
+    const cfg = JSON.parse(cleaned);
+    if (document.getElementById('fb-apiKey')) document.getElementById('fb-apiKey').value = cfg.apiKey || '';
+    if (document.getElementById('fb-authDomain')) document.getElementById('fb-authDomain').value = cfg.authDomain || '';
+    if (document.getElementById('fb-projectId')) document.getElementById('fb-projectId').value = cfg.projectId || '';
+    connectFirebase(cfg);
+  } catch(e) {
+    document.getElementById('fb-connect-status').textContent = '❌ JSON 파싱 실패. Firebase 콘솔에서 복사한 내용을 그대로 붙여넣으세요.';
+  }
+}
+
+async function _saveToFirebase() {
+  if (!_fbDb || _fbRemoteUpdate) return;
+  try {
+    await _fbDb.collection('folio').doc('data').set({ payload: JSON.stringify(data) });
+  } catch(e) {
+    console.warn('Firebase 저장 실패:', e.message);
+  }
+}
+
 function save() {
   localStorage.setItem('folio_data', JSON.stringify(data));
+  // Firebase 저장 (디바운스 500ms)
+  if (_fbDb) {
+    clearTimeout(_fbSaveTimer);
+    _fbSaveTimer = setTimeout(_saveToFirebase, 500);
+  }
+}
+
+// 앱 시작 시 저장된 Firebase 설정 자동 연결
+async function autoConnectFirebase() {
+  const saved = localStorage.getItem('fb_config');
+  if (saved) {
+    try {
+      const cfg = JSON.parse(saved);
+      // 설정 필드 채우기
+      if (document.getElementById('fb-apiKey')) document.getElementById('fb-apiKey').value = cfg.apiKey || '';
+      if (document.getElementById('fb-authDomain')) document.getElementById('fb-authDomain').value = cfg.authDomain || '';
+      if (document.getElementById('fb-projectId')) document.getElementById('fb-projectId').value = cfg.projectId || '';
+      await connectFirebase(cfg);
+    } catch(e) { console.warn('자동 연결 실패:', e); }
+  }
 }
 
 // ==================== THEME TOGGLE ====================
@@ -1399,6 +1602,7 @@ function showPage(p) {
     if (p === 'history') renderHistory();
     if (p === 'dividend') renderDividend();
     if (p === 'realized') renderRealized();
+    if (p === 'sync') updateFbStatusUI(!!_fbDb, localStorage.getItem('fb_config') ? JSON.parse(localStorage.getItem('fb_config')).projectId : '');
   }, 50);
 }
 
@@ -3405,6 +3609,8 @@ function init() {
   if (!data.stocks) data.stocks = [];
   if (!data.dividends) data.dividends = [];
   if (!data.realized) data.realized = [];
+  // Firebase 자동 연결 (저장된 설정 있으면)
+  setTimeout(autoConnectFirebase, 300);
   // Restore sidebar collapsed state on desktop
   if (!isMobile() && localStorage.getItem('sidebar_collapsed') === 'true') {
     const sidebar = document.getElementById('sidebar');
