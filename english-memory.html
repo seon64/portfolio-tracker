@@ -340,7 +340,7 @@ function QuizView({sentences,c}){
   const [done,setDone]=useState(false);
   function startQuiz(){
     if(sentences.length<2){alert("문장이 2개 이상 필요해요!");return;}
-    setQuiz(shuffle([...sentences]).slice(0,Math.min(10,sentences.length)));
+    setQuiz(shuffle([...sentences]).slice(0,Math.min(5,sentences.length)));
     setCurrent(0);setShow(false);setAnswered(false);setScore(0);setDone(false);
   }
   function next(){if(current+1>=quiz.length){setDone(true);return;}setCurrent(function(c){return c+1;});setShow(false);setAnswered(false);}
@@ -349,7 +349,7 @@ function QuizView({sentences,c}){
     <div style={{padding:"60px 20px",textAlign:"center"}}>
       <div style={{fontSize:48,marginBottom:16}}>🎯</div>
       <div style={{fontSize:16,fontWeight:700,color:c.text,marginBottom:8}}>문제 풀기</div>
-      <div style={{fontSize:13,color:c.textMuted,marginBottom:24}}>{sentences.length}개 문장으로 퀴즈</div>
+      <div style={{fontSize:13,color:c.textMuted,marginBottom:24}}>{sentences.length}개 문장 중 랜덤 5문제</div>
       <button onClick={startQuiz} className="btn-press"
         style={{padding:"14px 32px",borderRadius:14,border:"none",background:"linear-gradient(135deg,"+c.accent+","+c.accentB+")",color:"#fff",fontSize:16,fontWeight:900,cursor:"pointer"}}>
         시작하기 🚀
