@@ -678,7 +678,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">거래 유형</label>
-              <select id="t-type">
+              <select id="t-type" onchange="onTradeTypeChange(this.value)">
                 <option value="buy">매수</option>
                 <option value="sell">매도</option>
               </select>
@@ -688,7 +688,7 @@
               <input type="number" id="t-qty" placeholder="0" oninput="calcTradeTotal()">
             </div>
             <div class="form-group">
-              <label class="form-label">단가</label>
+              <label class="form-label">단가 <span id="t-price-hint" style="font-size:11px;color:var(--accent);font-weight:400"></span></label>
               <input type="number" id="t-price" placeholder="0" oninput="calcTradeTotal()">
             </div>
             <div class="form-group">
@@ -1935,8 +1935,42 @@ function selectTradeStock(ticker) {
   document.getElementById('trade-input-form').style.display = 'block';
   document.getElementById('trade-no-stock-msg').style.display = 'none';
   document.getElementById('t-qty').value = '';
-  document.getElementById('t-price').value = '';
   document.getElementById('t-total').value = '';
+  // 종목 선택 시 매도 상태면 평단가 자동입력
+  const type = document.getElementById('t-type')?.value;
+  onTradeTypeChange(type || 'buy');
+}
+
+function onTradeTypeChange(type) {
+  const priceInput = document.getElementById('t-price');
+  const hint = document.getElementById('t-price-hint');
+  if (type === 'sell' && selectedTradeStock) {
+    // 현재 평단가 계산
+    const map = {};
+    data.trades.forEach(t => {
+      if (t.ticker !== selectedTradeStock) return;
+      if (!map[t.ticker]) map[t.ticker] = { qty: 0, cost: 0 };
+      if (t.type === 'buy') {
+        map[t.ticker].qty += t.qty;
+        map[t.ticker].cost += t.qty * t.price;
+      } else {
+        const avg = map[t.ticker].qty > 0 ? map[t.ticker].cost / map[t.ticker].qty : 0;
+        map[t.ticker].qty -= t.qty;
+        map[t.ticker].cost -= t.qty * avg;
+      }
+    });
+    const h = map[selectedTradeStock];
+    if (h && h.qty > 0) {
+      const avg = Math.round(h.cost / h.qty);
+      priceInput.value = avg;
+      if (hint) hint.textContent = `(평단가 ${avg.toLocaleString()} 자동입력)`;
+      calcTradeTotal();
+    }
+  } else {
+    priceInput.value = '';
+    if (hint) hint.textContent = '';
+    calcTradeTotal();
+  }
 }
 
 function clearStockSelection() {
