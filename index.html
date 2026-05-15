@@ -641,13 +641,22 @@
       <div class="card mb-20">
         <div class="card-title">거래 입력</div>
 
-        <!-- 종목 드롭다운 -->
-        <div class="form-group" style="margin-bottom:16px">
-          <label class="form-label">종목 선택</label>
-          <select id="trade-stock-dropdown" onchange="selectTradeStock(this.value)"
-            style="font-size:15px;font-weight:600">
-            <option value="">— 종목을 선택하세요 —</option>
-          </select>
+        <!-- 분류 + 종목 드롭다운 -->
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:16px">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">분류 선택</label>
+            <select id="trade-category-dropdown" onchange="onTradeCategorySelect(this.value)"
+              style="font-size:14px;font-weight:600">
+              <option value="">— 전체 —</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">종목 선택</label>
+            <select id="trade-stock-dropdown" onchange="selectTradeStock(this.value)"
+              style="font-size:15px;font-weight:600">
+              <option value="">— 종목을 선택하세요 —</option>
+            </select>
+          </div>
         </div>
 
         <div id="trade-input-form" style="display:none">
@@ -1422,11 +1431,26 @@ async function connectFirebase(configOverride) {
       }
     });
 
-    // 현재 로컬 데이터를 Firebase에 업로드
-    await docRef.set({ payload: JSON.stringify(data) });
+    // Firebase에 데이터가 있으면 가져오고, 없을 때만 로컬 데이터 업로드
+    const snap = await docRef.get();
+    const hasLocal = data.trades && data.trades.length > 0;
+    const hasRemote = snap.exists && snap.data().payload;
+
+    if (hasRemote) {
+      // Firebase 데이터 우선 — 로컬에 반영
+      const remote = JSON.parse(snap.data().payload);
+      data = remote;
+      localStorage.setItem('folio_data', snap.data().payload);
+      if (statusEl) statusEl.textContent = '✅ 연결됨 (Firebase 데이터 불러옴)';
+    } else if (hasLocal) {
+      // Firebase 비어있고 로컬에 데이터 있으면 업로드
+      await docRef.set({ payload: JSON.stringify(data) });
+      if (statusEl) statusEl.textContent = '✅ 연결됨 (로컬 데이터 업로드)';
+    } else {
+      if (statusEl) statusEl.textContent = '✅ 연결됨';
+    }
 
     updateFbStatusUI(true, cfg.projectId);
-    if (statusEl) statusEl.textContent = '✅ 연결됨';
   } catch (e) {
     console.error(e);
     if (statusEl) statusEl.textContent = '❌ 연결 실패: ' + e.message;
@@ -1857,15 +1881,42 @@ function updateStockMasterCount() {
 }
 
 function renderTradeStockChips() {
-  // 드롭다운 방식으로 교체
+  // 분류 드롭다운 업데이트
+  const catDd = document.getElementById('trade-category-dropdown');
+  if (catDd) {
+    const prevCat = catDd.value;
+    const categories = [...new Set(data.stocks.map(s => s.category || '미분류').filter(Boolean))].sort();
+    catDd.innerHTML = '<option value="">— 전체 —</option>' +
+      categories.map(c => `<option value="${c}" ${prevCat === c ? 'selected' : ''}>${c}</option>`).join('');
+  }
+
+  // 종목 드롭다운 업데이트 (선택된 분류로 필터)
   const dd = document.getElementById('trade-stock-dropdown');
   if (!dd) return;
   const prev = dd.value;
+  const selectedCat = catDd ? catDd.value : '';
+  const filtered = selectedCat
+    ? data.stocks.filter(s => (s.category || '미분류') === selectedCat)
+    : data.stocks;
   dd.innerHTML = '<option value="">— 종목을 선택하세요 —</option>' +
-    data.stocks.map(s =>
-      `<option value="${s.ticker}" ${prev === s.ticker ? 'selected' : ''}>${s.ticker}  ${s.name}  [${s.category || '—'}]</option>`
+    filtered.map(s =>
+      `<option value="${s.ticker}" ${prev === s.ticker ? 'selected' : ''}>${s.ticker}  ${s.name}</option>`
     ).join('');
   updateStockMasterCount();
+}
+
+function onTradeCategorySelect(cat) {
+  // 분류 바뀌면 종목 목록 갱신 + 선택 초기화
+  clearStockSelection();
+  const dd = document.getElementById('trade-stock-dropdown');
+  if (!dd) return;
+  const filtered = cat
+    ? data.stocks.filter(s => (s.category || '미분류') === cat)
+    : data.stocks;
+  dd.innerHTML = '<option value="">— 종목을 선택하세요 —</option>' +
+    filtered.map(s =>
+      `<option value="${s.ticker}">${s.ticker}  ${s.name}</option>`
+    ).join('');
 }
 
 function selectTradeStock(ticker) {
