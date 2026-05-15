@@ -2204,8 +2204,10 @@ function getHoldings() {
       map[key].qty += t.qty;
       map[key].cost += t.qty * t.price;
     } else {
+      // 매도 시 평단가 기준으로 cost 차감 (평단가 유지)
+      const avgPrice = map[key].qty > 0 ? map[key].cost / map[key].qty : 0;
       map[key].qty -= t.qty;
-      map[key].cost -= t.qty * t.price;
+      map[key].cost -= t.qty * avgPrice;
     }
     if (t.name) map[key].name = t.name;
     map[key].accIds.add(t.accId);
