@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f7f6f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Daily English 5</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--text:#1f2328;--muted:#77736d;--line:#e7e3dc;--accent:#1f2328;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Noto Sans KR",sans-serif}
+button,input,textarea{font:inherit}
+.app{max-width:560px;margin:0 auto;min-height:100dvh;padding:calc(14px + var(--safe-top)) 14px calc(100px + var(--safe-bottom))}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+h1{margin:0;font-size:24px} .sub{font-size:13px;color:var(--muted);margin-top:4px}
+.icon-btn{width:46px;height:46px;border:1px solid var(--line);border-radius:15px;background:#fff}
+.tabs{display:grid;grid-template-columns:1fr 1fr;padding:4px;background:#ebe8e2;border-radius:16px;position:sticky;top:calc(8px + var(--safe-top));z-index:5}
+.tab{height:44px;border:0;border-radius:12px;background:transparent;font-weight:800;color:#666}
+.tab.active{background:#fff;color:#111}
+.panel{display:none;padding-top:16px} .panel.active{display:block}
+.date-row{display:flex;justify-content:space-between;gap:12px;margin:0 2px 14px}
+.date-title{font-size:20px;font-weight:850} .date-sub,.status{font-size:12px;color:var(--muted)} .status{white-space:nowrap}
+.sentence-list{display:grid;gap:12px}
+.sentence-card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:15px;box-shadow:0 8px 24px rgba(0,0,0,.05)}
+.sentence-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.sentence-no{font-size:13px;font-weight:850} .sentence-tools{display:flex;align-items:center;gap:8px}
+.count-label{font-size:12px;color:var(--muted)} .detail-btn{min-height:32px;border:1px solid var(--line);background:#f7f5f1;border-radius:999px;padding:0 11px;font-size:12px;font-weight:800}
+.sentence-input{display:block;width:100%;min-height:92px;border:0;outline:0;background:#faf9f6;border-radius:16px;padding:14px 15px;font-size:16px;line-height:1.55;color:var(--text);resize:none;-webkit-appearance:none}
+.sentence-input:focus{box-shadow:inset 0 0 0 1.5px #aaa49c}
+.dots{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}
+.dot{width:32px;height:32px;border-radius:50%;border:1.6px solid #b7b1a8;background:#fff;justify-self:center}
+.dot.filled{background:var(--accent);border-color:var(--accent)}
+.actions{display:grid;grid-template-columns:1fr 1.35fr;gap:10px;margin-top:14px;position:sticky;bottom:calc(8px + var(--safe-bottom));padding-top:10px;background:linear-gradient(transparent,var(--bg) 35%)}
+.primary,.secondary{min-height:52px;border-radius:16px;font-weight:850} .primary{border:0;background:#1f2328;color:#fff} .secondary{border:1px solid var(--line);background:#fff}
+.calendar-card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:16px}
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px} .month-title{font-size:18px;font-weight:850}
+.cal-nav button{width:42px;height:42px;border:1px solid var(--line);background:#fff;border-radius:13px;font-size:20px}
+.week,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px} .week div{font-size:11px;color:#999;text-align:center;padding:7px 0}
+.day{aspect-ratio:1;border:0;border-radius:12px;background:transparent;position:relative} .day.selected{background:#222;color:#fff} .day.other{color:#c8c5bf}
+.day.has:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:#888;left:50%;bottom:5px;transform:translateX(-50%)} .day.selected.has:after{background:#fff}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:30;align-items:flex-end} .modal.show{display:flex}
+.sheet{width:100%;max-width:560px;margin:0 auto;background:#fff;border-radius:28px 28px 0 0;padding:20px 18px calc(20px + var(--safe-bottom));max-height:88dvh;overflow:auto}
+.grabber{width:42px;height:5px;border-radius:9px;background:#d6d2cc;margin:0 auto 16px} .sheet h2{margin:0 0 6px} .sheet p{margin:0 0 16px;font-size:13px;color:var(--muted)}
+.field{margin-bottom:13px} .field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px} .field input{width:100%;height:48px;border:1px solid var(--line);border-radius:14px;padding:0 12px;font-size:16px}
+.sheet-actions{display:grid;grid-template-columns:1fr 1.4fr;gap:9px;margin-top:16px}
+.toast{position:fixed;left:50%;bottom:calc(24px + var(--safe-bottom));transform:translateX(-50%);background:#222;color:#fff;padding:11px 14px;border-radius:12px;font-size:13px;display:none;z-index:50}
+.toast.show{display:block}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="topbar">
+    <div><h1>Daily English 5</h1><div class="sub">매일 5문장 · 소리 내어 10번 읽기</div></div>
+    <button class="icon-btn" id="settingsBtn">⚙️</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="today">오늘</button>
+    <button class="tab" data-tab="calendar">달력</button>
+  </div>
+
+  <section class="panel active" id="todayPanel">
+    <div class="date-row">
+      <div><div class="date-title" id="dateTitle"></div><div class="date-sub">영어 문장을 입력하고 읽을 때마다 동그라미를 눌러주세요.</div></div>
+      <div class="status" id="syncStatus">로컬 저장</div>
+    </div>
+    <div class="sentence-list">
+      
+      <article class="sentence-card" data-index="0">
+        <div class="sentence-head">
+          <div class="sentence-no">Sentence 1</div>
+          <div class="sentence-tools">
+            <span class="count-label" id="count-0">0/10</span>
+            <button type="button" class="detail-btn">뜻 · 문법</button>
+          </div>
+        </div>
+        <textarea class="sentence-input" rows="3" maxlength="500" placeholder="오늘의 영어 문장 1"></textarea>
+        <div class="dots"><button type="button" class="dot" data-dot="1" aria-label="1회 읽기"></button><button type="button" class="dot" data-dot="2" aria-label="2회 읽기"></button><button type="button" class="dot" data-dot="3" aria-label="3회 읽기"></button><button type="button" class="dot" data-dot="4" aria-label="4회 읽기"></button><button type="button" class="dot" data-dot="5" aria-label="5회 읽기"></button><button type="button" class="dot" data-dot="6" aria-label="6회 읽기"></button><button type="button" class="dot" data-dot="7" aria-label="7회 읽기"></button><button type="button" class="dot" data-dot="8" aria-label="8회 읽기"></button><button type="button" class="dot" data-dot="9" aria-label="9회 읽기"></button><button type="button" class="dot" data-dot="10" aria-label="10회 읽기"></button></div>
+      </article>
+    
+      <article class="sentence-card" data-index="1">
+        <div class="sentence-head">
+          <div class="sentence-no">Sentence 2</div>
+          <div class="sentence-tools">
+            <span class="count-label" id="count-1">0/10</span>
+            <button type="button" class="detail-btn">뜻 · 문법</button>
+          </div>
+        </div>
+        <textarea class="sentence-input" rows="3" maxlength="500" placeholder="오늘의 영어 문장 2"></textarea>
+        <div class="dots"><button type="button" class="dot" data-dot="1" aria-label="1회 읽기"></button><button type="button" class="dot" data-dot="2" aria-label="2회 읽기"></button><button type="button" class="dot" data-dot="3" aria-label="3회 읽기"></button><button type="button" class="dot" data-dot="4" aria-label="4회 읽기"></button><button type="button" class="dot" data-dot="5" aria-label="5회 읽기"></button><button type="button" class="dot" data-dot="6" aria-label="6회 읽기"></button><button type="button" class="dot" data-dot="7" aria-label="7회 읽기"></button><button type="button" class="dot" data-dot="8" aria-label="8회 읽기"></button><button type="button" class="dot" data-dot="9" aria-label="9회 읽기"></button><button type="button" class="dot" data-dot="10" aria-label="10회 읽기"></button></div>
+      </article>
+    
+      <article class="sentence-card" data-index="2">
+        <div class="sentence-head">
+          <div class="sentence-no">Sentence 3</div>
+          <div class="sentence-tools">
+            <span class="count-label" id="count-2">0/10</span>
+            <button type="button" class="detail-btn">뜻 · 문법</button>
+          </div>
+        </div>
+        <textarea class="sentence-input" rows="3" maxlength="500" placeholder="오늘의 영어 문장 3"></textarea>
+        <div class="dots"><button type="button" class="dot" data-dot="1" aria-label="1회 읽기"></button><button type="button" class="dot" data-dot="2" aria-label="2회 읽기"></button><button type="button" class="dot" data-dot="3" aria-label="3회 읽기"></button><button type="button" class="dot" data-dot="4" aria-label="4회 읽기"></button><button type="button" class="dot" data-dot="5" aria-label="5회 읽기"></button><button type="button" class="dot" data-dot="6" aria-label="6회 읽기"></button><button type="button" class="dot" data-dot="7" aria-label="7회 읽기"></button><button type="button" class="dot" data-dot="8" aria-label="8회 읽기"></button><button type="button" class="dot" data-dot="9" aria-label="9회 읽기"></button><button type="button" class="dot" data-dot="10" aria-label="10회 읽기"></button></div>
+      </article>
+    
+      <article class="sentence-card" data-index="3">
+        <div class="sentence-head">
+          <div class="sentence-no">Sentence 4</div>
+          <div class="sentence-tools">
+            <span class="count-label" id="count-3">0/10</span>
+            <button type="button" class="detail-btn">뜻 · 문법</button>
+          </div>
+        </div>
+        <textarea class="sentence-input" rows="3" maxlength="500" placeholder="오늘의 영어 문장 4"></textarea>
+        <div class="dots"><button type="button" class="dot" data-dot="1" aria-label="1회 읽기"></button><button type="button" class="dot" data-dot="2" aria-label="2회 읽기"></button><button type="button" class="dot" data-dot="3" aria-label="3회 읽기"></button><button type="button" class="dot" data-dot="4" aria-label="4회 읽기"></button><button type="button" class="dot" data-dot="5" aria-label="5회 읽기"></button><button type="button" class="dot" data-dot="6" aria-label="6회 읽기"></button><button type="button" class="dot" data-dot="7" aria-label="7회 읽기"></button><button type="button" class="dot" data-dot="8" aria-label="8회 읽기"></button><button type="button" class="dot" data-dot="9" aria-label="9회 읽기"></button><button type="button" class="dot" data-dot="10" aria-label="10회 읽기"></button></div>
+      </article>
+    
+      <article class="sentence-card" data-index="4">
+        <div class="sentence-head">
+          <div class="sentence-no">Sentence 5</div>
+          <div class="sentence-tools">
+            <span class="count-label" id="count-4">0/10</span>
+            <button type="button" class="detail-btn">뜻 · 문법</button>
+          </div>
+        </div>
+        <textarea class="sentence-input" rows="3" maxlength="500" placeholder="오늘의 영어 문장 5"></textarea>
+        <div class="dots"><button type="button" class="dot" data-dot="1" aria-label="1회 읽기"></button><button type="button" class="dot" data-dot="2" aria-label="2회 읽기"></button><button type="button" class="dot" data-dot="3" aria-label="3회 읽기"></button><button type="button" class="dot" data-dot="4" aria-label="4회 읽기"></button><button type="button" class="dot" data-dot="5" aria-label="5회 읽기"></button><button type="button" class="dot" data-dot="6" aria-label="6회 읽기"></button><button type="button" class="dot" data-dot="7" aria-label="7회 읽기"></button><button type="button" class="dot" data-dot="8" aria-label="8회 읽기"></button><button type="button" class="dot" data-dot="9" aria-label="9회 읽기"></button><button type="button" class="dot" data-dot="10" aria-label="10회 읽기"></button></div>
+      </article>
+    
+    </div>
+    <div class="actions">
+      <button class="secondary" id="clearChecksBtn">체크 초기화</button>
+      <button class="primary" id="saveBtn">저장하기</button>
+    </div>
+  </section>
+
+  <section class="panel" id="calendarPanel">
+    <div class="calendar-card">
+      <div class="cal-head"><div class="month-title" id="monthTitle"></div><div class="cal-nav"><button id="prevMonth">‹</button><button id="nextMonth">›</button></div></div>
+      <div class="week"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+      <div class="grid" id="calendarGrid"></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="detailModal">
+  <div class="sheet">
+    <div class="grabber"></div>
+    <h2 id="detailTitle">Sentence 상세</h2>
+    <p>메인 화면에는 영어만 보입니다.</p>
+    <div class="field"><label>영어 문장</label><input id="detailEnglish"></div>
+    <div class="field"><label>한국어 뜻</label><input id="detailKorean" placeholder="예: 너 정말 피곤하겠다."></div>
+    <div class="field"><label>간단한 문법 메모</label><input id="detailGrammar" placeholder="예: must + 동사원형 = 강한 추측"></div>
+    <div class="sheet-actions"><button class="secondary" id="closeDetail">닫기</button><button class="primary" id="saveDetail">저장</button></div>
+  </div>
+</div>
+
+<div class="modal" id="settingsModal">
+  <div class="sheet">
+    <div class="grabber"></div>
+    <h2>Notion 연결 설정</h2>
+    <p>DB 주소/ID, API Key, 프록시 주소를 직접 입력할 수 있습니다.</p>
+    <div class="field"><label>Notion Database 주소 또는 ID</label><input id="dbId" placeholder="https://www.notion.so/... 또는 Database ID"></div>
+    <div class="field"><label>Notion API Key</label><input id="apiKey" type="password" placeholder="secret_... 또는 ntn_..."></div>
+    <div class="field"><label>프록시 주소</label><input id="proxyUrl" placeholder="https://your-worker.workers.dev"></div>
+    <div class="sheet-actions"><button class="secondary" id="closeSettings">닫기</button><button class="primary" id="saveSettings">설정 저장</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+  const pad=n=>String(n).padStart(2,'0');
+  const key=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const fromKey=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
+  const blank=date=>({date,sentences:['','','','',''],korean:['','','','',''],grammar:['','','','',''],counts:[0,0,0,0,0],pageId:null});
+  let selected=new Date(); selected.setHours(0,0,0,0);
+  let month=new Date(selected.getFullYear(),selected.getMonth(),1);
+  let record=blank(key(selected));
+  let detailIndex=0;
+  let known=new Set(JSON.parse(localStorage.getItem('de5_known')||'[]'));
+
+  function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600)}
+  function loadLocal(date){try{const r=JSON.parse(localStorage.getItem('de5_'+date))||blank(date);r.korean=r.korean||['','','','',''];r.grammar=r.grammar||['','','','',''];return r}catch(e){return blank(date)}}
+  function saveLocal(){localStorage.setItem('de5_'+record.date,JSON.stringify(record));known.add(record.date);localStorage.setItem('de5_known',JSON.stringify(Array.from(known)));}
+  function koDate(d){return new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(d)}
+
+  function renderRecord(){
+    $('#dateTitle').textContent=koDate(selected);
+    $$('.sentence-card').forEach((card,i)=>{
+      const ta=card.querySelector('.sentence-input');
+      ta.value=record.sentences[i]||'';
+      card.querySelector('#count-'+i).textContent=(record.counts[i]||0)+'/10';
+      card.querySelectorAll('.dot').forEach((dot,n)=>dot.classList.toggle('filled',n<(record.counts[i]||0)));
+    });
+  }
+
+  $$('.sentence-card').forEach((card,i)=>{
+    const ta=card.querySelector('.sentence-input');
+    ta.addEventListener('input',()=>{record.sentences[i]=ta.value;saveLocal();$('#syncStatus').textContent='로컬 저장';});
+    card.querySelector('.detail-btn').addEventListener('click',()=>openDetail(i));
+    card.querySelectorAll('.dot').forEach((dot,n)=>{
+      dot.addEventListener('click',()=>{const target=n+1;record.counts[i]=record.counts[i]===target?target-1:target;saveLocal();renderRecord();});
+    });
+  });
+
+  function openDetail(i){detailIndex=i;$('#detailTitle').textContent='Sentence '+(i+1)+' 상세';$('#detailEnglish').value=record.sentences[i]||'';$('#detailKorean').value=record.korean[i]||'';$('#detailGrammar').value=record.grammar[i]||'';$('#detailModal').classList.add('show')}
+  $('#closeDetail').onclick=()=>$('#detailModal').classList.remove('show');
+  $('#saveDetail').onclick=()=>{record.sentences[detailIndex]=$('#detailEnglish').value;record.korean[detailIndex]=$('#detailKorean').value;record.grammar[detailIndex]=$('#detailGrammar').value;saveLocal();renderRecord();$('#detailModal').classList.remove('show');toast('상세 내용을 저장했습니다.')};
+
+  function switchTab(name){$$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));$('#todayPanel').classList.toggle('active',name==='today');$('#calendarPanel').classList.toggle('active',name==='calendar');if(name==='calendar')renderCalendar();}
+  $$('.tab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+
+  function renderCalendar(){
+    $('#monthTitle').textContent=month.getFullYear()+'년 '+(month.getMonth()+1)+'월';
+    const g=$('#calendarGrid');g.innerHTML='';
+    const start=new Date(month.getFullYear(),month.getMonth(),1-month.getDay());
+    for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=key(d);const b=document.createElement('button');b.className='day';if(d.getMonth()!==month.getMonth())b.classList.add('other');if(k===record.date)b.classList.add('selected');if(known.has(k))b.classList.add('has');b.textContent=d.getDate();b.onclick=()=>{selected=d;record=loadLocal(k);renderRecord();switchTab('today')};g.appendChild(b);}
+  }
+  $('#prevMonth').onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);renderCalendar()};
+  $('#nextMonth').onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);renderCalendar()};
+  $('#clearChecksBtn').onclick=()=>{record.counts=[0,0,0,0,0];saveLocal();renderRecord()};
+
+  function cfg(){return {db:localStorage.getItem('de5_db')||'',api:localStorage.getItem('de5_api')||'',proxy:(localStorage.getItem('de5_proxy')||'').replace(/\/$/,'')}}
+  function dbid(v){const m=(v||'').match(/[a-fA-F0-9]{32}/);return m?m[0]:v}
+  async function nf(path,opt={}){const c=cfg();const h={'Content-Type':'application/json'};if(c.api){h.Authorization='Bearer '+c.api;h['X-Notion-Token']=c.api}const r=await fetch(c.proxy+path,{...opt,headers:h});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message||'Notion 요청 실패');return d}
+  function props(){const p={Date:{date:{start:record.date}}};for(let i=1;i<=5;i++){p['Sentence '+i]={rich_text:[{type:'text',text:{content:record.sentences[i-1]||''}}]};p['Korean '+i]={rich_text:[{type:'text',text:{content:record.korean[i-1]||''}}]};p['Grammar '+i]={rich_text:[{type:'text',text:{content:record.grammar[i-1]||''}}]};p['Count '+i]={number:Number(record.counts[i-1]||0)}}return p}
+  $('#saveBtn').onclick=async()=>{saveLocal();const c=cfg();if(!c.db||!c.proxy){toast('아이폰에 저장했습니다.');return}try{$('#syncStatus').textContent='Notion 저장 중…';if(record.pageId){await nf('/v1/pages/'+record.pageId,{method:'PATCH',body:JSON.stringify({properties:props()})})}else{const r=await nf('/v1/pages',{method:'POST',body:JSON.stringify({parent:{database_id:dbid(c.db)},properties:props()})});record.pageId=r.id;saveLocal()}$('#syncStatus').textContent='Notion 저장 완료';toast('Notion에 저장했습니다.')}catch(e){$('#syncStatus').textContent='Notion 저장 실패';toast('로컬에는 저장되었습니다.')}};
+
+  $('#settingsBtn').onclick=()=>{const c=cfg();$('#dbId').value=c.db;$('#apiKey').value=c.api;$('#proxyUrl').value=c.proxy;$('#settingsModal').classList.add('show')};
+  $('#closeSettings').onclick=()=>$('#settingsModal').classList.remove('show');
+  $('#saveSettings').onclick=()=>{localStorage.setItem('de5_db',$('#dbId').value.trim());localStorage.setItem('de5_api',$('#apiKey').value.trim());localStorage.setItem('de5_proxy',$('#proxyUrl').value.trim());$('#settingsModal').classList.remove('show');toast('설정을 저장했습니다.')};
+
+  record=loadLocal(key(selected));
+  renderRecord();
+  renderCalendar();
+})();
+</script>
+</body>
+</html>
