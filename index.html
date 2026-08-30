@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7f7f5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="월간목표" />
+  <meta name="description" content="매월 5개의 목표를 설정하고 매일 체크해 수행률을 확인하는 모바일 웹앱" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <title>월간 목표 체크</title>
+  <style>
+    :root{
+      --bg:#f7f7f5;
+      --card:#ffffff;
+      --text:#161616;
+      --muted:#777772;
+      --line:#e6e6e0;
+      --accent:#2f6f5e;
+      --accent-soft:#e7f1ed;
+      --soft:#efefeb;
+      --danger:#a34242;
+      --shadow:0 8px 24px rgba(0,0,0,.05);
+    }
+    *{box-sizing:border-box}
+    html{-webkit-text-size-adjust:100%;background:var(--bg)}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",system-ui,sans-serif;
+    }
+    button,input{font:inherit}
+    button{touch-action:manipulation}
+    .app{
+      width:min(100%, 560px);
+      margin:0 auto;
+      padding:
+        max(18px, env(safe-area-inset-top))
+        16px
+        calc(96px + env(safe-area-inset-bottom))
+        16px;
+    }
+    .topbar{
+      display:grid;
+      grid-template-columns:48px 1fr 48px;
+      gap:10px;
+      align-items:center;
+      margin-bottom:14px;
+    }
+    .icon-btn,.ghost-btn,.primary-btn,.tab,.date-btn{
+      min-height:46px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:var(--card);
+      color:var(--text);
+    }
+    .icon-btn{font-size:25px;font-weight:500}
+    .title-wrap{text-align:center;min-width:0}
+    .month-title{font-weight:800;font-size:21px;letter-spacing:-.02em}
+    .subtitle{font-size:12px;color:var(--muted);margin-top:4px}
+    .summary{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:20px;
+      padding:17px;
+      margin-bottom:14px;
+      box-shadow:var(--shadow);
+    }
+    .summary-row{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .summary-kicker{font-size:12px;color:var(--muted);font-weight:700}
+    .summary-rate{font-size:34px;font-weight:850;line-height:1;margin-top:6px}
+    .summary-count{font-size:13px;color:var(--muted);font-weight:700;white-space:nowrap}
+    .bar{height:10px;background:var(--soft);border-radius:999px;overflow:hidden;margin-top:14px}
+    .bar>span{display:block;height:100%;background:var(--accent);width:0;border-radius:999px;transition:width .2s ease}
+    .tabs{
+      position:sticky;
+      top:max(8px, env(safe-area-inset-top));
+      z-index:5;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      padding:8px;
+      border:1px solid var(--line);
+      background:rgba(247,247,245,.94);
+      backdrop-filter:blur(16px);
+      border-radius:18px;
+      margin-bottom:16px;
+    }
+    .tab{
+      border:0;
+      background:transparent;
+      font-size:14px;
+      font-weight:800;
+    }
+    .tab.active{background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.06);color:var(--accent)}
+    .view{display:none}
+    .view.active{display:block}
+    .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:12px}
+    .section-title{font-size:19px;font-weight:850;margin:0}
+    .section-desc{font-size:13px;color:var(--muted);margin:4px 0 0}
+    .date-card,.goal-card,.progress-card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+    }
+    .date-card{padding:14px;margin-bottom:14px}
+    .selected-label{font-size:12px;color:var(--muted);font-weight:700}
+    .selected-date{font-size:20px;font-weight:850;margin-top:4px}
+    .date-row{
+      display:grid;
+      grid-template-columns:48px minmax(0,1fr) 48px;
+      gap:8px;
+      margin-top:13px;
+      align-items:center;
+    }
+    .date-input-wrap{min-width:0}
+    input[type="date"],input[type="text"]{
+      width:100%;
+      min-height:48px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      color:var(--text);
+      padding:0 13px;
+      font-size:16px;
+      outline:none;
+    }
+    input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+    .today-btn{
+      min-height:46px;
+      padding:0 15px;
+      border:0;
+      border-radius:14px;
+      background:var(--accent-soft);
+      color:var(--accent);
+      font-weight:850;
+    }
+    .check-list{display:grid;gap:10px}
+    .check-item{
+      display:grid;
+      grid-template-columns:30px minmax(0,1fr) auto;
+      gap:12px;
+      align-items:center;
+      min-height:70px;
+      padding:13px 14px;
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .check-item.checked{border-color:var(--accent);background:var(--accent-soft)}
+    .check-item input{width:24px;height:24px;accent-color:var(--accent);margin:0}
+    .goal-name{font-weight:800;line-height:1.35;overflow-wrap:anywhere}
+    .check-hint{font-size:12px;color:var(--muted);margin-top:4px}
+    .done-mark{font-size:12px;font-weight:900;color:var(--accent)}
+    .empty{
+      border:1px dashed var(--line);
+      border-radius:18px;
+      padding:28px 18px;
+      text-align:center;
+      color:var(--muted);
+      font-size:14px;
+      background:rgba(255,255,255,.5);
+    }
+    .goal-list,.progress-list{display:grid;gap:11px}
+    .goal-card{padding:13px}
+    .goal-line{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center}
+    .goal-num{
+      width:42px;height:42px;border-radius:50%;
+      display:grid;place-items:center;
+      background:var(--soft);font-size:14px;font-weight:850;
+    }
+    .helper{
+      margin-top:12px;
+      padding:12px 13px;
+      border-radius:14px;
+      background:var(--soft);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+    .progress-card{padding:15px}
+    .progress-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .progress-name{font-size:15px;font-weight:850;overflow-wrap:anywhere}
+    .progress-meta{font-size:12px;color:var(--muted);margin-top:4px}
+    .progress-rate{font-size:23px;font-weight:900;white-space:nowrap}
+    .progress-card .bar{height:9px;margin-top:12px}
+    .manage-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    .ghost-btn,.primary-btn{
+      padding:0 14px;
+      font-weight:800;
+      font-size:14px;
+    }
+    .primary-btn{background:var(--accent);color:white;border-color:var(--accent)}
+    .danger{color:var(--danger)}
+    .status{min-height:18px;text-align:center;font-size:12px;color:var(--muted);margin-top:14px}
+    .footer-note{text-align:center;color:var(--muted);font-size:11px;line-height:1.5;margin-top:8px}
+    @media (max-width:360px){
+      .app{padding-left:12px;padding-right:12px}
+      .tab{font-size:13px}
+      .month-title{font-size:19px}
+      .summary-rate{font-size:31px}
+    }
+    @media (prefers-color-scheme:dark){
+      :root{
+        --bg:#111311;
+        --card:#1b1e1b;
+        --text:#f4f4f1;
+        --muted:#aaa9a2;
+        --line:#31342f;
+        --accent:#7ab39f;
+        --accent-soft:#20372f;
+        --soft:#272a26;
+        --shadow:none;
+      }
+      input[type="date"],input[type="text"]{background:#171917;color:var(--text)}
+      .tabs{background:rgba(17,19,17,.92)}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <button class="icon-btn" id="prevMonth" type="button" aria-label="이전 달">‹</button>
+      <div class="title-wrap">
+        <div class="month-title" id="monthTitle"></div>
+        <div class="subtitle">월간 목표 5개 · 매일 체크</div>
+      </div>
+      <button class="icon-btn" id="nextMonth" type="button" aria-label="다음 달">›</button>
+    </header>
+
+    <section class="summary" aria-label="이번 달 전체 수행률">
+      <div class="summary-row">
+        <div>
+          <div class="summary-kicker">전체 수행률</div>
+          <div class="summary-rate" id="overallRate">—</div>
+        </div>
+        <div class="summary-count" id="overallCount">0회 완료</div>
+      </div>
+      <div class="bar"><span id="overallBar"></span></div>
+    </section>
+
+    <nav class="tabs" aria-label="메뉴">
+      <button class="tab active" data-tab="daily" type="button">오늘 체크</button>
+      <button class="tab" data-tab="goals" type="button">목표 설정</button>
+      <button class="tab" data-tab="progress" type="button">수행률</button>
+    </nav>
+
+    <section class="view active" id="dailyView">
+      <div class="date-card">
+        <div class="section-head">
+          <div>
+            <div class="selected-label">선택한 날짜</div>
+            <div class="selected-date" id="selectedDateLabel"></div>
+          </div>
+          <button class="today-btn" id="todayBtn" type="button">오늘</button>
+        </div>
+        <div class="date-row">
+          <button class="date-btn" id="prevDay" type="button" aria-label="이전 날짜">‹</button>
+          <div class="date-input-wrap">
+            <input id="dayPicker" type="date" aria-label="날짜 선택" />
+          </div>
+          <button class="date-btn" id="nextDay" type="button" aria-label="다음 날짜">›</button>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">오늘의 목표</h2>
+          <p class="section-desc">완료한 항목을 눌러 체크하세요.</p>
+        </div>
+      </div>
+
+      <div class="check-list" id="dailyGoals"></div>
+      <div class="empty" id="dailyEmpty" hidden>
+        이번 달 목표가 아직 없습니다.<br />
+        <b>목표 설정</b>에서 최대 5개까지 입력해 주세요.
+      </div>
+    </section>
+
+    <section class="view" id="goalsView">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">이번 달 목표</h2>
+          <p class="section-desc">매월 최대 5개까지 설정할 수 있어요.</p>
+        </div>
+      </div>
+      <div class="goal-list" id="goalInputs"></div>
+      <div class="helper">
+        입력한 목표와 체크 기록은 이 기기의 Safari/브라우저에 자동 저장됩니다.
+        목표 이름을 바꿔도 같은 번호의 기존 체크 기록은 유지됩니다.
+      </div>
+      <div class="manage-row">
+        <button class="ghost-btn" type="button" id="copyPrevGoals">지난달 목표 복사</button>
+        <button class="ghost-btn danger" type="button" id="clearMonth">이번 달 기록 초기화</button>
+      </div>
+    </section>
+
+    <section class="view" id="progressView">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">목표별 수행률</h2>
+          <p class="section-desc" id="rateRule"></p>
+        </div>
+      </div>
+      <div class="progress-list" id="progressCards"></div>
+      <div class="empty" id="progressEmpty" hidden>
+        목표를 입력하면 각 목표의 수행률이 표시됩니다.
+      </div>
+    </section>
+
+    <div class="status" id="statusMsg" aria-live="polite"></div>
+    <div class="footer-note">데이터는 서버로 전송되지 않고 현재 기기의 브라우저에 저장됩니다.</div>
+  </main>
+
+  <script>
+  (() => {
+    const STORAGE_KEY = "monthly-goal-tracker-v1";
+    const $ = (s) => document.querySelector(s);
+
+    let data = loadData();
+    let activeTab = "daily";
+    const now = new Date();
+    let activeMonth = monthKey(now.getFullYear(), now.getMonth() + 1);
+    let selectedDate = dateKey(now.getFullYear(), now.getMonth() + 1, now.getDate());
+
+    function monthKey(y,m){ return `${y}-${String(m).padStart(2,"0")}`; }
+    function dateKey(y,m,d){ return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+    function parseMonth(key){ const [y,m]=key.split("-").map(Number); return {y,m}; }
+    function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+    function isValidMonth(key){ return /^\d{4}-\d{2}$/.test(key); }
+    function defaultMonth(){ return { goals:["","","","",""], checks:{} }; }
+
+    function loadData(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      }catch(e){ return {}; }
+    }
+
+    function saveData(){
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }catch(e){
+        setStatus("저장 공간에 기록을 저장하지 못했습니다.");
+      }
+    }
+
+    function getMonthState(key){
+      if(!data[key]) data[key] = defaultMonth();
+      if(!Array.isArray(data[key].goals)) data[key].goals = ["","","","",""];
+      while(data[key].goals.length < 5) data[key].goals.push("");
+      data[key].goals = data[key].goals.slice(0,5);
+      if(!data[key].checks || typeof data[key].checks !== "object") data[key].checks = {};
+      return data[key];
+    }
+
+    function monthLabel(key){
+      const {y,m}=parseMonth(key);
+      return `${y}년 ${m}월`;
+    }
+
+    function weekdayLabel(value){
+      const [y,m,d]=value.split("-").map(Number);
+      const day = new Date(y,m-1,d).getDay();
+      return ["일요일","월요일","화요일","수요일","목요일","금요일","토요일"][day];
+    }
+
+    function selectedDateLabel(){
+      const [y,m,d]=selectedDate.split("-").map(Number);
+      return `${m}월 ${d}일 ${weekdayLabel(selectedDate)}`;
+    }
+
+    function elapsedDaysForRate(key){
+      const {y,m}=parseMonth(key);
+      const total=daysInMonth(y,m);
+      const ty=now.getFullYear(), tm=now.getMonth()+1, td=now.getDate();
+      if(y < ty || (y===ty && m<tm)) return total;
+      if(y > ty || (y===ty && m>tm)) return 0;
+      return Math.min(td,total);
+    }
+
+    function activeGoalEntries(){
+      const s=getMonthState(activeMonth);
+      return s.goals.map((name,index)=>({name:name.trim(),index})).filter(x=>x.name);
+    }
+
+    function checkedOnDate(goalIndex,date=selectedDate){
+      const s=getMonthState(activeMonth);
+      return !!s.checks[`${date}:${goalIndex}`];
+    }
+
+    function setChecked(goalIndex,value,date=selectedDate){
+      const s=getMonthState(activeMonth);
+      const key=`${date}:${goalIndex}`;
+      if(value) s.checks[key]=true;
+      else delete s.checks[key];
+      saveData();
+    }
+
+    function setStatus(msg){
+      $("#statusMsg").textContent=msg;
+      window.clearTimeout(setStatus.timer);
+      setStatus.timer=window.setTimeout(()=>$("#statusMsg").textContent="",2200);
+    }
+
+    function renderHeader(){
+      $("#monthTitle").textContent=monthLabel(activeMonth);
+      $("#selectedDateLabel").textContent=selectedDateLabel();
+      const {y,m}=parseMonth(activeMonth);
+      $("#dayPicker").min=dateKey(y,m,1);
+      $("#dayPicker").max=dateKey(y,m,daysInMonth(y,m));
+      $("#dayPicker").value=selectedDate;
+    }
+
+    function renderTabs(){
+      document.querySelectorAll(".tab").forEach(btn=>{
+        const active=btn.dataset.tab===activeTab;
+        btn.classList.toggle("active",active);
+        btn.setAttribute("aria-selected",String(active));
+      });
+      document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+      $(`#${activeTab}View`).classList.add("active");
+    }
+
+    function renderGoals(){
+      const s=getMonthState(activeMonth);
+      const wrap=$("#goalInputs");
+      wrap.innerHTML="";
+      s.goals.forEach((goal,i)=>{
+        const card=document.createElement("div");
+        card.className="goal-card";
+
+        const line=document.createElement("div");
+        line.className="goal-line";
+
+        const num=document.createElement("div");
+        num.className="goal-num";
+        num.textContent=i+1;
+
+        const input=document.createElement("input");
+        input.type="text";
+        input.maxLength=40;
+        input.value=goal;
+        input.placeholder=`목표 ${i+1} 입력`;
+        input.setAttribute("aria-label",`목표 ${i+1}`);
+        input.addEventListener("input",()=>{
+          s.goals[i]=input.value.trimStart();
+          saveData();
+          renderDaily();
+          renderProgress();
+          renderSummary();
+        });
+
+        line.append(num,input);
+        card.append(line);
+        wrap.append(card);
+      });
+    }
+
+    function renderDaily(){
+      const goals=activeGoalEntries();
+      const wrap=$("#dailyGoals");
+      const empty=$("#dailyEmpty");
+      wrap.innerHTML="";
+      empty.hidden=goals.length>0;
+
+      goals.forEach(({name,index})=>{
+        const checked=checkedOnDate(index);
+        const label=document.createElement("label");
+        label.className=`check-item${checked?" checked":""}`;
+
+        const cb=document.createElement("input");
+        cb.type="checkbox";
+        cb.checked=checked;
+        cb.setAttribute("aria-label",`${name} 완료`);
+        cb.addEventListener("change",()=>{
+          setChecked(index,cb.checked);
+          renderDaily();
+          renderProgress();
+          renderSummary();
+          setStatus(cb.checked ? "완료로 체크했습니다." : "체크를 해제했습니다.");
+        });
+
+        const text=document.createElement("div");
+        const n=document.createElement("div");
+        n.className="goal-name";
+        n.textContent=name;
+        const hint=document.createElement("div");
+        hint.className="check-hint";
+        hint.textContent=checked ? "완료했어요" : "탭해서 완료 체크";
+        text.append(n,hint);
+
+        const mark=document.createElement("div");
+        mark.className="done-mark";
+        mark.textContent=checked ? "완료" : "";
+
+        label.append(cb,text,mark);
+        wrap.append(label);
+      });
+    }
+
+    function goalStats(index){
+      const s=getMonthState(activeMonth);
+      const denom=elapsedDaysForRate(activeMonth);
+      let done=0;
+      if(denom>0){
+        const {y,m}=parseMonth(activeMonth);
+        for(let d=1; d<=denom; d++){
+          const dk=dateKey(y,m,d);
+          if(s.checks[`${dk}:${index}`]) done++;
+        }
+      }
+      return {done,denom,rate:denom ? Math.round(done/denom*100) : 0};
+    }
+
+    function renderProgress(){
+      const goals=activeGoalEntries();
+      const wrap=$("#progressCards");
+      const empty=$("#progressEmpty");
+      wrap.innerHTML="";
+      empty.hidden=goals.length>0;
+
+      const denom=elapsedDaysForRate(activeMonth);
+      $("#rateRule").textContent = denom===0
+        ? "미래 월은 수행률 계산을 시작하지 않습니다."
+        : `${denom}일 경과 기준`;
+
+      goals.forEach(({name,index})=>{
+        const st=goalStats(index);
+        const card=document.createElement("div");
+        card.className="progress-card";
+
+        const top=document.createElement("div");
+        top.className="progress-top";
+
+        const left=document.createElement("div");
+        const title=document.createElement("div");
+        title.className="progress-name";
+        title.textContent=name;
+        const meta=document.createElement("div");
+        meta.className="progress-meta";
+        meta.textContent=st.denom ? `${st.done}일 완료 / ${st.denom}일 경과` : "아직 시작 전";
+        left.append(title,meta);
+
+        const rate=document.createElement("div");
+        rate.className="progress-rate";
+        rate.textContent=st.denom ? `${st.rate}%` : "—";
+
+        top.append(left,rate);
+
+        const bar=document.createElement("div");
+        bar.className="bar";
+        const fill=document.createElement("span");
+        fill.style.width=`${st.rate}%`;
+        bar.append(fill);
+
+        card.append(top,bar);
+        wrap.append(card);
+      });
+    }
+
+    function renderSummary(){
+      const goals=activeGoalEntries();
+      const denom=elapsedDaysForRate(activeMonth);
+      let totalDone=0;
+      goals.forEach(g=> totalDone += goalStats(g.index).done);
+      const possible=goals.length*denom;
+      const rate=possible ? Math.round(totalDone/possible*100) : 0;
+
+      $("#overallRate").textContent=possible ? `${rate}%` : "—";
+      $("#overallCount").textContent=`${totalDone}회 완료`;
+      $("#overallBar").style.width=`${rate}%`;
+    }
+
+    function setActiveMonth(key,preferredDay=1){
+      if(!isValidMonth(key)) return;
+      activeMonth=key;
+      const {y,m}=parseMonth(key);
+      const max=daysInMonth(y,m);
+      const day=Math.max(1,Math.min(preferredDay,max));
+      selectedDate=dateKey(y,m,day);
+      renderAll();
+    }
+
+    function shiftMonth(delta){
+      const {y,m}=parseMonth(activeMonth);
+      const d=new Date(y,m-1+delta,1);
+      setActiveMonth(monthKey(d.getFullYear(),d.getMonth()+1),1);
+    }
+
+    function shiftDay(delta){
+      const [y,m,d]=selectedDate.split("-").map(Number);
+      const next=new Date(y,m-1,d+delta);
+      activeMonth=monthKey(next.getFullYear(),next.getMonth()+1);
+      selectedDate=dateKey(next.getFullYear(),next.getMonth()+1,next.getDate());
+      renderAll();
+    }
+
+    function goToday(){
+      const d=new Date();
+      activeMonth=monthKey(d.getFullYear(),d.getMonth()+1);
+      selectedDate=dateKey(d.getFullYear(),d.getMonth()+1,d.getDate());
+      renderAll();
+    }
+
+    function copyPreviousGoals(){
+      const {y,m}=parseMonth(activeMonth);
+      const prev=new Date(y,m-2,1);
+      const prevKey=monthKey(prev.getFullYear(),prev.getMonth()+1);
+      const prevState=data[prevKey];
+      if(!prevState || !Array.isArray(prevState.goals) || !prevState.goals.some(g=>String(g).trim())){
+        setStatus("지난달에 복사할 목표가 없습니다.");
+        return;
+      }
+      const s=getMonthState(activeMonth);
+      s.goals=prevState.goals.slice(0,5).map(x=>String(x||""));
+      while(s.goals.length<5) s.goals.push("");
+      saveData();
+      renderAll();
+      setStatus("지난달 목표를 복사했습니다.");
+    }
+
+    function clearMonth(){
+      if(!confirm(`${monthLabel(activeMonth)}의 목표와 체크 기록을 모두 지울까요?`)) return;
+      data[activeMonth]=defaultMonth();
+      saveData();
+      renderAll();
+      setStatus("이번 달 기록을 초기화했습니다.");
+    }
+
+    function renderAll(){
+      getMonthState(activeMonth);
+      renderHeader();
+      renderTabs();
+      renderGoals();
+      renderDaily();
+      renderProgress();
+      renderSummary();
+    }
+
+    document.querySelectorAll(".tab").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        activeTab=btn.dataset.tab;
+        renderTabs();
+      });
+    });
+
+    $("#prevMonth").addEventListener("click",()=>shiftMonth(-1));
+    $("#nextMonth").addEventListener("click",()=>shiftMonth(1));
+    $("#todayBtn").addEventListener("click",goToday);
+    $("#prevDay").addEventListener("click",()=>shiftDay(-1));
+    $("#nextDay").addEventListener("click",()=>shiftDay(1));
+    $("#dayPicker").addEventListener("change",()=>{
+      const v=$("#dayPicker").value;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+      selectedDate=v;
+      activeMonth=v.slice(0,7);
+      renderAll();
+    });
+    $("#copyPrevGoals").addEventListener("click",copyPreviousGoals);
+    $("#clearMonth").addEventListener("click",clearMonth);
+
+    renderAll();
+
+    if("serviceWorker" in navigator){
+      window.addEventListener("load",()=>{
+        navigator.serviceWorker.register("./sw.js").catch(()=>{});
+      });
+    }
+  })();
+  </script>
+</body>
+</html>
